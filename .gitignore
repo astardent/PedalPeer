@@ -1,0 +1,4 @@
+api/node_modules
+.venv
+api/.env
+api/__pycache__
