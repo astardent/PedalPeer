@@ -1,10 +1,9 @@
 export default function Footer() {
     return (
-        <div>
+        <footer>
             <hr />
-            Copyright 2026.
+            <p>Copyright 2026.</p>
             <hr />
-
-        </div>
-    )
+        </footer>
+    );
 }
