@@ -22,22 +22,15 @@ def health():
 
 @app.get("/test-db")
 def test_db():
-    try:
-        with pool.connection() as conn:
-            result = conn.execute("SELECT version();").fetchone()
-            return {"status": "connected", "database_version": result["version"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    with pool.connection() as conn:
+        result = conn.execute("SELECT version();").fetchone()
+        return {"status": "connected", "database_version": result["version"]}
 
 @app.get("/users")
 def get_users():
-    try:
-        with pool.connection() as conn:
-            # Selects rows from your 'users' table
-            results = conn.execute("SELECT id, username, email FROM users;").fetchall()
-            return {"users": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    with pool.connection() as conn:
+        results = conn.execute("SELECT id, username, email FROM users;").fetchall()
+        return {"users": results}
 
 
 class UserSignup(BaseModel):
@@ -51,42 +44,20 @@ class UserLogin(BaseModel):
 
 @app.post("/signup")
 def signup(user: UserSignup):
-    try:
-        with pool.connection() as conn:
-            # Check if user already exists
-            existing = conn.execute("SELECT id FROM users WHERE email = %s;", (user.email,)).fetchone()
-            if existing:
-                raise HTTPException(status_code=400, detail="Email already registered")
-            
-            # Insert user (Note: In production apps, passwords should be hashed)
-            query = """
-                INSERT INTO users (username, email, password)
-                VALUES (%s, %s, %s)
-                RETURNING id, username, email;
-            """
-            new_user = conn.execute(query, (user.username, user.email, user.password)).fetchone()
-            return {"status": "success", "user": new_user}
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    with pool.connection() as conn:
+        query = "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id, username, email;"
+        new_user = conn.execute(query, (user.username, user.email, user.password)).fetchone()
+        return {"status": "success", "user": new_user}
 
 @app.post("/login")
 def login(user: UserLogin):
-    try:
-        with pool.connection() as conn:
-            query = "SELECT id, username, email, password FROM users WHERE email = %s;"
-            db_user = conn.execute(query, (user.email,)).fetchone()
-            
-            if not db_user or db_user["password"] != user.password:
-                raise HTTPException(status_code=401, detail="Invalid email or password")
-            
+    with pool.connection() as conn:
+        db_user = conn.execute("SELECT id, username, email, password FROM users WHERE email = %s;", (user.email,)).fetchone()
+        
+        if db_user and db_user["password"] == user.password:
             return {
                 "status": "success", 
-                "message": "Login successful", 
                 "user": {"id": db_user["id"], "username": db_user["username"], "email": db_user["email"]}
             }
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        
+        return {"status": "error", "message": "Invalid email or password"}
