@@ -12,3 +12,7 @@ SECRET = os.environ["JST_SECRET"]
 ALGO = "HS256"
 TLL = 60*24 #minutes
 
+def hash_password(plain: str)->str:
+    return bcrypt.hashpw(plain.encode(),bcrypt.gensalt()).decode()
+
+
