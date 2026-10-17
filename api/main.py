@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
@@ -52,12 +52,12 @@ def signup(user: UserSignup):
 @app.post("/login")
 def login(user: UserLogin):
     with pool.connection() as conn:
-        db_user = conn.execute("SELECT id, username, email, password FROM users WHERE email = %s;", (user.email,)).fetchone()
-        
+        query="SELECT id, username, email, password FROM users WHERE email = %s;"
+        db_user = conn.execute(query, (user.email,)).fetchone()
         if db_user and db_user["password"] == user.password:
-            return {
+            return{
                 "status": "success", 
                 "user": {"id": db_user["id"], "username": db_user["username"], "email": db_user["email"]}
             }
         
-        return {"status": "error", "message": "Invalid email or password"}
+        return{"status": "error", "message": "Invalid email or password"}
