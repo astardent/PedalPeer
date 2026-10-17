@@ -58,6 +58,11 @@ Make sure you have the following installed on your machine:
    ```env
    DATABASE_URL=postgresql://<username>:<password>@localhost:5432/<your_database_name>
    CORS_ORIGIN=http://localhost:3000
+   JWT_SECRET=<your_random_secret>
+   ```
+   `JWT_SECRET` signs login tokens. Generate your own random value with:
+   ```bash
+   python3 -c "import secrets; print(secrets.token_hex(32))"
    ```
 5. Start the backend API server:
    ```bash
