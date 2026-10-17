@@ -20,3 +20,11 @@ def verify_password(plain:str, hashed:str)->bool:
         return bcrypt.checkpw(plain.encode(),hashed.encode())
     except ValueError:
         return False
+
+def make_token(user_id:int, email:str)->str:
+    payload = {
+        "sub":str(user_id),
+        "email":email,
+        "exp":datetime.now(timezone.utc)+timedelta(minutes=TTL),
+    }
+    return jwt.encode(payload,SECRET,algorithm=ALGO)
