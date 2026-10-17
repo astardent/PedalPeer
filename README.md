@@ -58,6 +58,11 @@ Make sure you have the following installed on your machine:
    ```env
    DATABASE_URL=postgresql://<username>:<password>@localhost:5432/<your_database_name>
    CORS_ORIGIN=http://localhost:3000
+   JWT_SECRET=<your_random_secret>
+   ```
+   `JWT_SECRET` signs login tokens. Generate your own random value with:
+   ```bash
+   python3 -c "import secrets; print(secrets.token_hex(32))"
    ```
 5. Start the backend API server:
    ```bash
@@ -85,3 +90,27 @@ Make sure you have the following installed on your machine:
    > The web app will be available at: **http://localhost:3000**
 
 ---
+
+## Testing the App
+Follow these steps to perform an end-to-end verification of the system:
+
+### 1. Verify API & Database Health
+- Check backend status:
+  - Open: [http://localhost:8000/health](http://localhost:8000/
+  health) &rarr; Expected: `{"ok":true}`
+  - Open: [http://localhost:8000/test-db](http://localhost:8000/test-db) &rarr; Expected: `{"status": "connected", ...}`
+
+### 2. Test User Signup
+1. Open [http://localhost:3000/signup](http://localhost:3000/signup) in your browser.
+2. Fill in:
+   - **Username**: e.g. `testuser`
+   - **Email**: e.g. `test@iitb.ac.in`
+   - **Password**: `password123`
+3. Click **Sign Up**.
+4. You should see a confirmation message and be redirected to `/login`.
+
+### 3. Test User Login
+1. Open [http://localhost:3000/](http://localhost:3000/) (automatically redirects to `/login`) or visit [http://localhost:3000/login](http://localhost:3000/login).
+2. Enter the registered email and password.
+3. Click **Log In**.
+4. Upon successful login, you will be redirected to `/test`.
