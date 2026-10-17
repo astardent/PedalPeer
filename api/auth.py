@@ -8,9 +8,9 @@ from fastapi import Header, HTTPException
 
 load_dotenv()
 
-SECRET = os.environ["JST_SECRET"]
+SECRET = os.environ["JWT_SECRET"]
 ALGO = "HS256"
-TLL = 60*24 #minutes
+TTL = 60*24 #minutes
 
 def hash_password(plain: str)->str:
     return bcrypt.hashpw(plain.encode(),bcrypt.gensalt()).decode()
@@ -30,7 +30,7 @@ def make_token(user_id:int, email:str)->str:
     return jwt.encode(payload,SECRET,algorithm=ALGO)
 
 def current_user(authorization:str = Header(default="")):
-    token = authorization.removeprefix("Bearer").strip()
+    token = authorization.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(401,"missing token")
     try:
@@ -41,4 +41,4 @@ def current_user(authorization:str = Header(default="")):
         raise HTTPException(401,"token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(401,"bad token")
-    return {"id": int(payload["sub"]),"email"=payload["email"]}
+    return {"id": int(payload["sub"]),"email":payload["email"]}
