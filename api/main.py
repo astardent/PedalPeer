@@ -128,4 +128,34 @@ def delete_cycle(cycle_id: int, user=Depends(current_user)):
             raise HTTPException(404, "not found or not your cycle")
         return {"ok": True}
 
+# bookings
+
+@app.post("/bookings", status_code=201)
+def request_booking(body: NewBooking, user=Depends(current_user)):
+    with pool.connection() as conn:
+        cycle = conn.execute("SELECT * FROM cycles WHERE id = %s AND is_available = TRUE", (body.cycle_id,)).fetchone()
+        if not cycle:
+            raise HTTPException(404, "cycle not available")
+        if cycle["owner_id"] == user["id"]:
+            raise HTTPException(400, "cannot book your own cycle")
+        row = conn.execute(
+            """INSERT INTO bookings (cycle_id, renter_id, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING *""",
+            (body.cycle_id, user["id"], body.start_time, body.end_time)).fetchone()
+        return row
+
+@app.get("/bookings/mine")
+def my_bookings(user=Depends(current_user)):
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT b.*, c.title as cycle_title, c.hostel FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s ORDER BY b.created_at DESC""",
+            (user["id"],)).fetchall()
+
+@app.get("/bookings/incoming")
+def incoming_bookings(user=Depends(current_user)):
+    """Bookings on my cycles that I need to accept/reject."""
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'requested' ORDER BY b.created_at DESC""",
+            (user["id"],)).fetchall()
+
     
