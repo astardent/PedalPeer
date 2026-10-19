@@ -3,9 +3,9 @@ from fastapi import FastAPI, HTTPException,Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from auth import current_user,verify_password,make_token,hash_password
-
+from typing import Optional
 load_dotenv()
 
 app = FastAPI(title="PedalPeer Local API")
@@ -43,6 +43,15 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class NewCycle(BaseModel):
+    title:          str = Field(min_length=3, max_length=80)
+    description:    Optional[str] = None
+    price_per_hour: int = Field(ge=0)
+    hostel:         Optional[str] = None
+    lat:            Optional[float] = None
+    lng:            Optional[float] = None
+
 
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
@@ -84,3 +93,35 @@ def me(user=Depends(current_user)):
         query="SELECT id, username, email, created_at FROM users WHERE id = %s"
         me_user=conn.execute(query,(user["id"],)).fetchone()
         return me_user
+
+
+# cycles
+
+@app.get("/cycles")
+def list_cycles(hostel: Optional[str] = None):
+    with pool.connection() as conn:
+        if hostel:
+            rows = conn.execute("""SELECT c.*, u.username as owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+                   WHERE c.is_available = TRUE AND c.hostel = %s ORDER BY c.created_at DESC""",(hostel,)).fetchall()
+        else:
+            rows = conn.execute("""SELECT c.*, u.username as owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+                   WHERE c.is_available = TRUE ORDER BY c.created_at DESC""").fetchall()
+        return rows
+
+
+@app.post("/cycles", status_code=201)
+def create_cycle(body: NewCycle, user=Depends(current_user)):
+    with pool.connection() as conn:
+        row = conn.execute("""INSERT INTO cycles (owner_id, title, description, price_per_hour, hostel, lat, lng) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            (user["id"], body.title, body.description,body.price_per_hour, body.hostel, body.lat, body.lng)).fetchone()
+        return row
+
+@app.delete("/cycles/{cycle_id}")
+def delete_cycle(cycle_id: int, user=Depends(current_user)):
+    with pool.connection() as conn:
+        result = conn.execute("DELETE FROM cycles WHERE id = %s AND owner_id = %s",(cycle_id, user["id"]))
+        if result.rowcount == 0:
+            raise HTTPException(404, "not found or not your cycle")
+        return {"ok": True}
+
+    
