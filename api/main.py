@@ -52,6 +52,10 @@ class NewCycle(BaseModel):
     lat:            Optional[float] = None
     lng:            Optional[float] = None
 
+class NewBooking(BaseModel):
+    cycle_id:   int
+    start_time: str   # format: "2024-11-01T10:00:00"
+    end_time:   str
 
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
@@ -89,7 +93,7 @@ def login(body: UserLogin):
 
 @app.get("/me")
 def me(user=Depends(current_user)):
-    with pool.connection as conn:
+    with pool.connection() as conn:
         query="SELECT id, username, email, created_at FROM users WHERE id = %s"
         me_user=conn.execute(query,(user["id"],)).fetchone()
         return me_user
