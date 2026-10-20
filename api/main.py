@@ -6,6 +6,7 @@ from database import pool
 from pydantic import BaseModel,Field
 from auth import current_user,verify_password,make_token,hash_password
 from typing import Optional
+from otp import hash_code,new_code,verify_code
 load_dotenv()
 
 app = FastAPI(title="PedalPeer Local API")
@@ -56,6 +57,9 @@ class NewBooking(BaseModel):
     cycle_id:   int
     start_time: str   # format: "2024-11-01T10:00:00"
     end_time:   str
+
+class OTPSubmit(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
 
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
@@ -158,4 +162,61 @@ def incoming_bookings(user=Depends(current_user)):
             """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'requested' ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
-    
+
+@app.post("/bookings/{booking_id}/accept")
+def accept_booking(booking_id: int, user=Depends(current_user)):
+    code = new_code()
+    with pool.connection() as conn:
+        result = conn.execute(
+            """UPDATE bookings b SET status = 'accepted', start_otp = %s FROM cycles c
+               WHERE b.id = %s AND b.cycle_id = c.id AND c.owner_id = %s AND b.status = 'requested'""",
+            (hash_code(code, booking_id), booking_id, user["id"]))
+        if result.rowcount == 0:
+            raise HTTPException(409, "not allowed")
+        
+        return {"ok": True, "start_otp": code}    
+
+@app.post("/bookings/{booking_id}/start")
+def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
+    with pool.connection() as conn:
+        booking = conn.execute("SELECT * FROM bookings WHERE id = %s AND renter_id = %s AND status = 'accepted'",
+            (booking_id, user["id"])).fetchone()
+        
+        if not booking:
+            raise HTTPException(404, "booking not found")
+        if not verify_code(body.code, booking["start_otp"], booking_id):
+            raise HTTPException(403, "wrong OTP")
+        end_code = new_code()
+
+        conn.execute("UPDATE bookings SET status = 'active', end_otp = %s WHERE id = %s",
+            (hash_code(end_code, booking_id), booking_id))
+        
+        conn.execute("UPDATE cycles SET is_available = FALSE WHERE id = %s",
+            (booking["cycle_id"],))
+        return {"ok": True, "end_otp": end_code}
+
+@app.post("/bookings/{booking_id}/complete")
+def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
+    with pool.connection() as conn:
+        booking = conn.execute("""SELECT b.* FROM bookings b JOIN cycles c ON b.cycle_id = c.id
+                                WHERE b.id = %s AND c.owner_id = %s AND b.status = 'active'""",(booking_id, user["id"])).fetchone()
+        if not booking:
+            raise HTTPException(404, "booking not found")
+        if not verify_code(body.code, booking["end_otp"], booking_id):
+            raise HTTPException(403, "wrong OTP")
+        
+        conn.execute("UPDATE bookings SET status = 'completed' WHERE id = %s", (booking_id,))
+
+        conn.execute("UPDATE cycles SET is_available = TRUE WHERE id = %s",(booking["cycle_id"],))
+
+        return {"ok": True}
+
+@app.post("/bookings/{booking_id}/cancel")
+def cancel_booking(booking_id: int, user=Depends(current_user)):
+    with pool.connection() as conn:
+        result = conn.execute("""UPDATE bookings SET status = 'cancelled' WHERE id = %s AND renter_id = %s AND status IN ('requested', 'accepted')""",
+            (booking_id, user["id"]))
+        
+        if result.rowcount == 0:
+            raise HTTPException(409, "cannot cancel")
+        return {"ok": True}
