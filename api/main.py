@@ -1,5 +1,6 @@
-import os
-from fastapi import FastAPI, HTTPException,Depends
+import os,shutil
+from pathlib import Path
+from fastapi import FastAPI, HTTPException,Depends,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
@@ -18,6 +19,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.get("/health")
 def health():
@@ -220,3 +224,33 @@ def cancel_booking(booking_id: int, user=Depends(current_user)):
         if result.rowcount == 0:
             raise HTTPException(409, "cannot cancel")
         return {"ok": True}
+
+# condition ledger
+
+@app.post("/bookings/{booking_id}/photos/{stage}")
+def upload_photo(
+    booking_id: int,
+    stage: str,
+    file: UploadFile = File(...),
+    user=Depends(current_user)
+):
+    if stage not in ("pre", "post"):
+        raise HTTPException(400, "stage must be pre or post")
+    
+    dest = UPLOAD_DIR / f"{booking_id}_{stage}_{file.filename}"
+
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    with pool.connection() as conn:
+        row = conn.execute(
+            """INSERT INTO condition_ledger (booking_id, stage, photo_path)
+               VALUES (%s, %s, %s) RETURNING *""",(booking_id, stage, str(dest))).fetchone()
+        
+        return row
+
+@app.get("/bookings/{booking_id}/photos")
+def get_photos(booking_id: int, user=Depends(current_user)):
+    with pool.connection() as conn:
+        return conn.execute(
+            "SELECT * FROM condition_ledger WHERE booking_id = %s ORDER BY stage",(booking_id,)).fetchall()
