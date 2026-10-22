@@ -1,101 +1,54 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { login } = useAuth();
+  const router = useRouter();
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
+    setError(""); setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        // Redirect to test/dashboard page on success
-        router.push("/test");
-      } else {
-        setError(data.detail || "Invalid email or password");
-      }
-    } catch (err) {
-      setError("Unable to connect to the server. Please ensure the backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      await login(form.email, form.password);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message ?? "Login failed");
+    } finally { setLoading(false); }
+  }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gray-50 text-gray-900">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-gray-100 p-8">
-        {/* Branding header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome Back</h1>
-          <p className="text-sm text-gray-500 mt-1">Log in to your PedalPeer account</p>
-        </div>
-
-        {/* Error message */}
-        {error && (
-          <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              placeholder="e.g. rollnumber@iitb.ac.in"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            {loading ? "Logging in..." : "Log In"}
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow p-8">
+        <h1 className="text-2xl font-bold mb-1">Welcome back</h1>
+        <p className="text-sm text-gray-500 mb-6">PedalPeer · IITB</p>
+        {error && <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {[
+            { label: "Email",    key: "email",    type: "email",    placeholder: "rollno@iitb.ac.in" },
+            { label: "Password", key: "password", type: "password", placeholder: "your password" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+              <input type={f.type} required placeholder={f.placeholder}
+                value={(form as any)[f.key]}
+                onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          ))}
+          <button type="submit" disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2 text-sm transition">
+            {loading ? "Logging in…" : "Log in"}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-emerald-600 font-semibold hover:underline">
-            Sign up
-          </Link>
+        <p className="mt-5 text-center text-sm text-gray-500">
+          No account?{" "}
+          <Link href="/signup" className="text-blue-600 hover:underline font-medium">Sign up</Link>
         </p>
       </div>
     </main>
