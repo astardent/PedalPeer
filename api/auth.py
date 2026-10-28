@@ -4,13 +4,15 @@ from datetime import datetime,timedelta,timezone
 import bcrypt
 import jwt
 from dotenv import load_dotenv
-from fastapi import Header, HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 load_dotenv()
 
 SECRET = os.environ["JWT_SECRET"]
 ALGO = "HS256"
 TTL = 60*24 #minutes
+bearer = HTTPBearer(auto_error=False)
 
 def hash_password(plain: str)->str:
     return bcrypt.hashpw(plain.encode(),bcrypt.gensalt()).decode()
@@ -29,10 +31,10 @@ def make_token(user_id:int, email:str)->str:
     }
     return jwt.encode(payload,SECRET,algorithm=ALGO)
 
-def current_user(authorization:str = Header(default="")):
-    token = authorization.removeprefix("Bearer ").strip()
-    if not token:
+def current_user(creds:HTTPAuthorizationCredentials | None = Depends(bearer)):
+    if creds is None:
         raise HTTPException(401,"missing token")
+    token = creds.credentials
     try:
         payload = jwt.decode(
             token,SECRET,algorithms=[ALGO],options={"require":["sub","email","exp"]}
