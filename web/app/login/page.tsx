@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow p-8">
-        <h1 className="text-2xl font-bold mb-1">Welcome back</h1>
+        <h1 className="text-2xl text-gray-800 font-bold mb-1">Welcome back</h1>
         <p className="text-sm text-gray-500 mb-6">PedalPeer · IITB</p>
         {error && <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
