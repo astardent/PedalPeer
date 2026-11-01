@@ -7,6 +7,7 @@ from database import pool
 from pydantic import BaseModel,Field
 from auth import current_user,verify_password,make_token,hash_password
 from typing import Optional
+from datetime import datetime
 from otp import hash_code,new_code,verify_code
 load_dotenv()
 
@@ -59,8 +60,8 @@ class NewCycle(BaseModel):
 
 class NewBooking(BaseModel):
     cycle_id:   int
-    start_time: str   # format: "2024-11-01T10:00:00"
-    end_time:   str
+    start_time: datetime   # format: "2024-11-01T10:00:00"
+    end_time:   datetime
 
 class OTPSubmit(BaseModel):
     code: str = Field(min_length=6, max_length=6)
