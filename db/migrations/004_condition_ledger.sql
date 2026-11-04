@@ -4,6 +4,5 @@ CREATE TABLE condition_ledger (
     stage       TEXT NOT NULL CHECK (stage IN ('pre', 'post')),
     photo_path  TEXT NOT NULL,   -- local path for now, S3 URL later
     notes       TEXT,
-    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (booking_id, stage)
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

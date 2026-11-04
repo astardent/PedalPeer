@@ -1,4 +1,4 @@
-import os,shutil
+import os,shutil,uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException,Depends,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
@@ -234,6 +234,15 @@ def cancel_booking(booking_id: int, user=Depends(current_user)):
 
 # condition ledger
 
+def get_booking_member(conn, booking_id: int, user_id: int):
+    """Only the renter or the cycle owner may touch a booking's photos."""
+    row = conn.execute("""SELECT b.renter_id, c.owner_id FROM bookings b JOIN cycles c ON b.cycle_id = c.id
+                          WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
+        (booking_id, user_id, user_id)).fetchone()
+    if not row:
+        raise HTTPException(404, "booking not found")
+    return row
+
 @app.post("/bookings/{booking_id}/photos/{stage}")
 def upload_photo(
     booking_id: int,
@@ -243,21 +252,34 @@ def upload_photo(
 ):
     if stage not in ("pre", "post"):
         raise HTTPException(400, "stage must be pre or post")
-    
-    dest = UPLOAD_DIR / f"{booking_id}_{stage}_{file.filename}"
 
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    # keep only the base name so "../x" can't escape UPLOAD_DIR
+    filename = Path(file.filename or "").name
+    if not filename:
+        raise HTTPException(400, "missing filename")
 
     with pool.connection() as conn:
+        booking = get_booking_member(conn, booking_id, user["id"])
+        # renter takes the pre photos, owner takes the post photos
+        if stage == "pre" and booking["renter_id"] != user["id"]:
+            raise HTTPException(403, "only the renter can upload pre photos")
+        if stage == "post" and booking["owner_id"] != user["id"]:
+            raise HTTPException(403, "only the owner can upload post photos")
+
+        # uuid keeps two photos with the same name from overwriting each other
+        dest = UPLOAD_DIR / f"{booking_id}_{stage}_{uuid.uuid4().hex}_{filename}"
+        with dest.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+
         row = conn.execute(
             """INSERT INTO condition_ledger (booking_id, stage, photo_path)
                VALUES (%s, %s, %s) RETURNING *""",(booking_id, stage, str(dest))).fetchone()
-        
+
         return row
 
 @app.get("/bookings/{booking_id}/photos")
 def get_photos(booking_id: int, user=Depends(current_user)):
     with pool.connection() as conn:
+        get_booking_member(conn, booking_id, user["id"])
         return conn.execute(
-            "SELECT * FROM condition_ledger WHERE booking_id = %s ORDER BY stage",(booking_id,)).fetchall()
+            "SELECT * FROM condition_ledger WHERE booking_id = %s ORDER BY stage, id",(booking_id,)).fetchall()
