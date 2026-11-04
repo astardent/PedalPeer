@@ -42,9 +42,10 @@ def get_users():
 
 
 class UserSignup(BaseModel):
-    username: str
-    email: str
-    password: str
+    # limits match the signup form and the users table; bcrypt only accepts up to 72 bytes
+    username: str = Field(min_length=3, max_length=50, pattern=r"^\S.*\S$")
+    email:    str = Field(max_length=100, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=6, max_length=72)
 
 class UserLogin(BaseModel):
     email: str
@@ -74,23 +75,22 @@ class OTPSubmit(BaseModel):
 
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
-    try:
-        with pool.connection() as conn:
-            #check if email exist
-            existing = conn.execute("SELECT id FROM users WHERE email = %s;", (user.email,)).fetchone()
-            if existing:
-                raise HTTPException(status_code=400, detail="Email already registered")
+    with pool.connection() as conn:
+        #check if email exist
+        existing = conn.execute("SELECT id FROM users WHERE email = %s;", (user.email,)).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-            # Insert new user
-            query = "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id, username, email;"
-            new_user = conn.execute(query, (user.username, user.email, hash_password(user.password))).fetchone()
-            
-            return {"status": "success", "user": new_user}
-            
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        #check if username exist
+        existing = conn.execute("SELECT id FROM users WHERE username = %s;", (user.username,)).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already taken")
+
+        # Insert new user
+        query = "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id, username, email;"
+        new_user = conn.execute(query, (user.username, user.email, hash_password(user.password))).fetchone()
+
+        return {"status": "success", "user": new_user}
 
 @app.post("/login")
 def login(body: UserLogin):
