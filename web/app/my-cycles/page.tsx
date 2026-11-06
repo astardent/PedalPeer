@@ -61,7 +61,7 @@ export default function MyCycles() {
                         {c.is_available ? "Available" : "Unavailable"}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-0.5">{c.hostel ?? "No hostel"} · ₹{c.price_per_hour}/hr</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{c.hostel ?? "No hostel"} : ₹{c.price_per_hour}/hr</p>
                     {c.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
                   </div>
                   <div className="flex gap-2 ml-4 shrink-0">

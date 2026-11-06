@@ -26,7 +26,7 @@ export default function SignupPage() {
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow p-8">
         <h1 className="text-2xl text-gray-900 font-bold mb-1">Create account</h1>
-        <p className="text-sm text-gray-500 mb-6">PedalPeer · IITB</p>
+        <p className="text-sm text-gray-500 mb-6">PedalPeer - IITB</p>
         {error && <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
@@ -39,7 +39,7 @@ export default function SignupPage() {
               <input type={f.type} required minLength={f.min} placeholder={f.placeholder}
                 value={(form as any)[f.key]}
                 onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           ))}
           <button type="submit" disabled={loading}
