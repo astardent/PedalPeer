@@ -45,7 +45,7 @@ export default function CycleDetail() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold">{cycle.title}</h1>
-              <p className="text-gray-500 mt-1">{cycle.hostel ?? "No hostel set"} · by {cycle.owner_name}</p>
+              <p className="text-gray-500 mt-1">{cycle.hostel ?? "No hostel set"} - by {cycle.owner_name}</p>
             </div>
             <span className="text-2xl font-bold text-blue-600">
               ₹{cycle.price_per_hour}<span className="text-sm font-normal text-gray-400">/hr</span>

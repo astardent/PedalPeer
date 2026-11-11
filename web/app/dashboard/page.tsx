@@ -70,7 +70,7 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium">{b.cycle_title}</p>
                     <p className="text-sm text-gray-500">
-                      {b.renter_name} · {new Date(b.start_time).toLocaleDateString()} – {new Date(b.end_time).toLocaleDateString()}
+                      {b.renter_name} : {new Date(b.start_time).toLocaleDateString()} – {new Date(b.end_time).toLocaleDateString()}
                     </p>
                   </div>
                   <Link href={`/bookings/${b.id}/accept`}
@@ -115,7 +115,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium">{b.cycle_title}</p>
                       <p className="text-sm text-gray-500">
-                        {b.hostel} · {new Date(b.start_time).toLocaleDateString()}
+                        {b.hostel} : {new Date(b.start_time).toLocaleDateString()}
                       </p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_STYLE[b.status]}`}>
                         {b.status}
