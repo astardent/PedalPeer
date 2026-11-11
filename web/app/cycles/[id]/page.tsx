@@ -23,9 +23,13 @@ export default function CycleDetail() {
   async function book(e: React.FormEvent) {
     e.preventDefault(); setMsg(""); setLoading(true);
     try {
-      await api.bookings.request({ cycle_id: Number(id), ...form });
-      setMsg("✅ Booking requested! Owner will accept soon.");
-    } catch (err: any) { setMsg("❌ " + (err.message ?? "Failed")); }
+      await api.bookings.request({
+        cycle_id:   Number(id),
+        start_time: new Date(form.start_time).toISOString(),
+        end_time:   new Date(form.end_time).toISOString(),
+      });
+      setMsg("  Booking requested! Owner will accept soon.");
+    } catch (err: any) { setMsg("  " + (err.message ?? "Failed")); }
     finally { setLoading(false); }
   }
 

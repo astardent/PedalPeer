@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException,Depends,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
-from pydantic import BaseModel,Field,model_validator
+from pydantic import BaseModel,Field,model_validator, AwareDatetime
 from auth import current_user,verify_password,make_token,hash_password
 from typing import Optional
 from datetime import datetime
@@ -61,8 +61,8 @@ class NewCycle(BaseModel):
 
 class NewBooking(BaseModel):
     cycle_id:   int
-    start_time: datetime   # format: "2024-11-01T10:00:00"
-    end_time:   datetime
+    start_time: AwareDatetime
+    end_time:   AwareDatetime
 
     @model_validator(mode="after")
     def check_times(self):
@@ -209,6 +209,19 @@ def active_on_my_cycles(user=Depends(current_user)):
             """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'active' ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
+@app.get("/bookings/{booking_id}")
+def get_booking(booking_id: int, user=Depends(current_user)):
+    """One booking, visible only to its renter or the cycle's owner."""
+    with pool.connection() as conn:
+        row = conn.execute(
+            """SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
+                      c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name
+               FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
+               WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
+            (booking_id, user["id"], user["id"])).fetchone()
+        if not row:
+            raise HTTPException(404, "booking not found")
+        return row
 
 @app.post("/bookings/{booking_id}/accept")
 def accept_booking(booking_id: int, user=Depends(current_user)):

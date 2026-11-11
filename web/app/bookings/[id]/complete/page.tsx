@@ -15,9 +15,9 @@ export default function CompleteBooking() {
     e.preventDefault(); setMsg(""); setLoading(true);
     try {
       await api.bookings.complete(Number(id), code);
-      setMsg("✅ Booking completed!");
+      setMsg("  Booking completed!");
       setTimeout(() => router.push("/dashboard"), 1500);
-    } catch (err: any) { setMsg("❌ " + (err.message ?? "Wrong OTP")); }
+    } catch (err: any) { setMsg("  " + (err.message ?? "Wrong OTP")); }
     finally { setLoading(false); }
   }
 

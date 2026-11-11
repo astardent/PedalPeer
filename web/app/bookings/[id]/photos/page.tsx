@@ -37,10 +37,10 @@ export default function PhotoUpload() {
         const rest = ps.filter(p => p.stage !== stage);
         return [...rest, row].sort((a, b) => a.stage.localeCompare(b.stage));
       });
-      setMsg("✅ Photo saved!");
+      setMsg("  Photo saved!");
       setFile(null); setPreview(null); setNotes("");
       if (inputRef.current) inputRef.current.value = "";
-    } catch (err: any) { setMsg("❌ " + (err.message ?? "Upload failed")); }
+    } catch (err: any) { setMsg("  " + (err.message ?? "Upload failed")); }
     finally { setLoading(false); }
   }
 
@@ -84,9 +84,8 @@ export default function PhotoUpload() {
             <div className="flex gap-3">
               {(["pre", "post"] as const).map(s => (
                 <button key={s} type="button" onClick={() => setStage(s)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
-                    stage === s ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 hover:border-blue-400"
-                  }`}>
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${stage === s ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 hover:border-blue-400"
+                    }`}>
                   {s === "pre" ? "Pre-ride" : "Post-ride"}
                 </button>
               ))}
@@ -98,9 +97,9 @@ export default function PhotoUpload() {
               {preview
                 ? <img src={preview} alt="preview" className="max-h-48 mx-auto rounded-lg object-cover" />
                 : <div className="text-gray-400">
-                    <p className="text-3xl mb-2">📷</p>
-                    <p className="text-sm">Click to choose a photo</p>
-                  </div>
+                  <p className="text-3xl mb-2">📷</p>
+                  <p className="text-sm">Click to choose a photo</p>
+                </div>
               }
               <input ref={inputRef} type="file" accept="image/*" onChange={pickFile} className="hidden" />
             </div>
