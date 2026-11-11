@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException,Depends,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
-from pydantic import BaseModel,Field,model_validator
+from pydantic import BaseModel,Field,model_validator, AwareDatetime
 from auth import current_user,verify_password,make_token,hash_password
 from typing import Optional
 from datetime import datetime
@@ -61,8 +61,8 @@ class NewCycle(BaseModel):
 
 class NewBooking(BaseModel):
     cycle_id:   int
-    start_time: datetime   # format: "2024-11-01T10:00:00"
-    end_time:   datetime
+    start_time: AwareDatetime
+    end_time:   AwareDatetime
 
     @model_validator(mode="after")
     def check_times(self):
