@@ -127,6 +127,24 @@ def list_cycles(hostel: Optional[str] = None):
                    WHERE c.is_available = TRUE ORDER BY c.created_at DESC""").fetchall()
         return rows
 
+@app.get("/cycles/mine")
+def my_cycles(user=Depends(current_user)):
+    with pool.connection() as conn:
+        return conn.execute(
+            "SELECT * FROM cycles WHERE owner_id = %s ORDER BY created_at DESC",
+            (user["id"],)).fetchall()
+
+
+
+@app.get("/cycles/{cycle_id}")
+def get_cycle(cycle_id: int):
+    with pool.connection() as conn:
+        row = conn.execute(
+            """SELECT c.*, u.username AS owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+               WHERE c.id = %s""", (cycle_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "cycle not found")
+        return row
 
 @app.post("/cycles", status_code=201)
 def create_cycle(body: NewCycle, user=Depends(current_user)):
@@ -181,6 +199,14 @@ def incoming_bookings(user=Depends(current_user)):
     with pool.connection() as conn:
         return conn.execute(
             """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'requested' ORDER BY b.created_at DESC""",
+            (user["id"],)).fetchall()
+
+@app.get("/bookings/active-on-my-cycles")
+def active_on_my_cycles(user=Depends(current_user)):
+    """Rides currently happening on my cycles, so I can complete them."""
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'active' ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
 
