@@ -135,6 +135,16 @@ def create_cycle(body: NewCycle, user=Depends(current_user)):
             (user["id"], body.title, body.description,body.price_per_hour, body.hostel, body.lat, body.lng)).fetchone()
         return row
 
+@app.get("/cycles/{cycle_id}")
+def get_cycle(cycle_id: int):
+    with pool.connection() as conn:
+        row = conn.execute(
+            """SELECT c.*, u.username AS owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+               WHERE c.id = %s""", (cycle_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "cycle not found")
+        return row
+
 @app.delete("/cycles/{cycle_id}")
 def delete_cycle(cycle_id: int, user=Depends(current_user)):
     with pool.connection() as conn:
