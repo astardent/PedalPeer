@@ -68,7 +68,7 @@ export default function ManageBooking() {
               type="text" inputMode="numeric" maxLength={6} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, ""))}
               placeholder="000000"
-              className="w-full border border-gray-300 rounded-xl px-4 py-4 text-center text-3xl font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              className="w-full border border-gray-300 rounded-xl px-4 py-4 text-center text-3xl font-mono tracking-[0.5em] text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
             />
             {msg && <p className="text-sm mb-3 break-words">{msg}</p>}
             <button onClick={submitOtp} disabled={loading || code.length !== 6}

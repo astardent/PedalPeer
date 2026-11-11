@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 
 const HOSTELS = ["H1","H2","H3","H4","H5","H6","H7","H8","H9","H10","H11","H12","H13","H14","H15","H16","Tansa","Qip"];
-const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 export default function NewCyclePage() {
   const router = useRouter();

@@ -106,7 +106,7 @@ export default function Dashboard() {
 
         {/* My bookings */}
         <section>
-          <h2 className="font-semibold text-lg mb-3">My Rentals</h2>
+          <h2 className="text-gray-900 font-semibold text-lg mb-3">My Rentals</h2>
           {bookings.length === 0
             ? <p className="text-gray-400 text-sm">No bookings yet. <Link href="/cycles" className="text-blue-500 underline">Browse cycles →</Link></p>
             : <div className="space-y-3">
@@ -136,7 +136,7 @@ export default function Dashboard() {
         {/* Browse cycles */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-lg">Available Cycles</h2>
+            <h2 className="font-semibold text-gray-900 text-lg">Available Cycles</h2>
             <Link href="/cycles" className="text-sm text-blue-600 hover:underline">See all →</Link>
           </div>
           {cycles.length === 0

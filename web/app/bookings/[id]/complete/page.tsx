@@ -32,7 +32,7 @@ export default function CompleteBooking() {
             type="text" inputMode="numeric" maxLength={6} value={code}
             onChange={e => setCode(e.target.value.replace(/\D/g, ""))}
             placeholder="000000"
-            className="w-full border border-gray-300 rounded-xl px-4 py-4 text-center text-3xl font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-xl px-4 py-4 text-center text-3xl font-mono tracking-[0.5em] text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {msg && <p className="text-sm">{msg}</p>}
           <button type="submit" disabled={loading || code.length !== 6}

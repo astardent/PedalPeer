@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
-const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 export default function CycleDetail() {
   const { id } = useParams();
@@ -44,7 +44,7 @@ export default function CycleDetail() {
         <div className="bg-white rounded-2xl shadow p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold">{cycle.title}</h1>
+              <h1 className="text-gray-2xl font-bold">{cycle.title}</h1>
               <p className="text-gray-500 mt-1">{cycle.hostel ?? "No hostel set"} - by {cycle.owner_name}</p>
             </div>
             <span className="text-2xl font-bold text-blue-600">
@@ -61,35 +61,35 @@ export default function CycleDetail() {
 
         {isOwner
           ? <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700">
-              This is your cycle.{" "}
-              <Link href="/my-cycles" className="underline">Manage your cycles →</Link>
-            </div>
+            This is your cycle.{" "}
+            <Link href="/my-cycles" className="underline">Manage your cycles →</Link>
+          </div>
           : cycle.is_available
             ? <div className="bg-white rounded-2xl shadow p-6">
-                <h2 className="font-semibold mb-4">Request a booking</h2>
-                <form onSubmit={book} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Start</label>
-                      <input type="datetime-local" required value={form.start_time}
-                        onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className={cls} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">End</label>
-                      <input type="datetime-local" required value={form.end_time}
-                        onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} className={cls} />
-                    </div>
+              <h2 className="font-semibold mb-4">Request a booking</h2>
+              <form onSubmit={book} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start</label>
+                    <input type="datetime-local" required value={form.start_time}
+                      onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className={cls} />
                   </div>
-                  {msg && <p className="text-sm">{msg}</p>}
-                  <button type="submit" disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2 text-sm transition">
-                    {loading ? "Requesting…" : "Request Booking"}
-                  </button>
-                </form>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End</label>
+                    <input type="datetime-local" required value={form.end_time}
+                      onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} className={cls} />
+                  </div>
+                </div>
+                {msg && <p className="text-sm">{msg}</p>}
+                <button type="submit" disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2 text-sm transition">
+                  {loading ? "Requesting…" : "Request Booking"}
+                </button>
+              </form>
+            </div>
             : <div className="bg-gray-50 border rounded-xl p-4 text-sm text-gray-500">
-                This cycle is currently unavailable.
-              </div>
+              This cycle is currently unavailable.
+            </div>
         }
       </div>
     </main>
