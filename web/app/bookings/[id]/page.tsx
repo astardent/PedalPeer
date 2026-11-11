@@ -17,26 +17,23 @@ export default function ManageBooking() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [endOtp, setEndOtp] = useState("");
 
   useEffect(() => {
-    api.bookings.get(Number(id)).then(setBooking).catch(() => router.push("/dashboard"));
+    api.bookings.get(Number(id)).then(b => {
+      setBooking(b);
+      if (b.status === "active") api.bookings.endOtp(Number(id)).then(d => setEndOtp(d.end_otp));
+    }).catch(() => router.push("/dashboard"));
   }, [id]);
 
   async function submitOtp() {
     if (code.length !== 6) { setMsg("Enter the 6-digit OTP"); return; }
     setMsg(""); setLoading(true);
-    const isAccepted = booking.status === "accepted";
     try {
-      if (isAccepted) {
-        const data = await api.bookings.start(Number(id), code);
-        setMsg(`  Ride started! End OTP: ${data.end_otp} — show this to the owner when done.`);
-        setBooking((b: any) => ({ ...b, status: "active" }));
-      } else {
-        await api.bookings.complete(Number(id), code);
-        setMsg("  Ride complete!");
-        setTimeout(() => router.push("/dashboard"), 1500);
-      }
-    } catch (err: any) { setMsg("  " + (err.message ?? "Wrong OTP")); }
+      const data = await api.bookings.start(Number(id), code);
+      setEndOtp(data.end_otp);
+      setBooking((b: any) => ({ ...b, status: "active" }));
+    } catch (err: any) { setMsg("Error: " + (err.message ?? "Wrong OTP")); }
     finally { setLoading(false); setCode(""); }
   }
 
@@ -56,13 +53,9 @@ export default function ManageBooking() {
           isAccepted ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
           }`}>{booking.status}</span>
 
-        {needsOtp && (
+        {isAccepted && (
           <div className="mt-6">
-            <p className="text-sm text-gray-600 mb-3">
-              {isAccepted
-                ? "Enter the start OTP from the owner to begin your ride."
-                : "Enter the end OTP from the owner to complete your ride."}
-            </p>
+            <p className="text-sm text-gray-600 mb-3">Enter the start OTP from the owner to begin your ride.</p>
             <input
               type="text" inputMode="numeric" maxLength={6} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, ""))}
@@ -72,14 +65,24 @@ export default function ManageBooking() {
             {msg && <p className="text-sm mb-3 break-words">{msg}</p>}
             <button onClick={submitOtp} disabled={loading || code.length !== 6}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2 text-sm transition">
-              {loading ? "Verifying…" : isAccepted ? "Start Ride" : "Complete Ride"}
+              {loading ? "Verifying…" : "Start Ride"}
             </button>
-            {isAccepted && (
-              <button onClick={() => api.bookings.cancel(Number(id)).then(() => router.push("/dashboard"))}
-                className="w-full mt-3 text-sm text-red-500 hover:underline">
-                Cancel booking
-              </button>
-            )}
+            <button onClick={() => api.bookings.cancel(Number(id)).then(() => router.push("/dashboard"))}
+              className="w-full mt-3 text-sm text-red-500 hover:underline">
+              Cancel booking
+            </button>
+          </div>
+        )}
+
+        {isActive && (
+          <div className="mt-6">
+            <p className="text-sm text-gray-600 mb-3">
+              Your ride is on. When you return the cycle, show this code to the owner. They enter it to end the ride.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+              <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{endOtp || "……"}</p>
+              <p className="text-xs text-blue-400 mt-2">End OTP</p>
+            </div>
           </div>
         )}
 

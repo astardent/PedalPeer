@@ -61,6 +61,7 @@ export const api = {
     accept:   (id: number) => req(`/bookings/${id}/accept`, { method: "POST" }),
     start:    (id: number, code: string) =>
       req(`/bookings/${id}/start`,    { method: "POST", body: JSON.stringify({ code }) }),
+    endOtp:   (id: number) => req(`/bookings/${id}/end-otp`, { method: "POST" }),
     complete: (id: number, code: string) =>
       req(`/bookings/${id}/complete`, { method: "POST", body: JSON.stringify({ code }) }),
     cancel:   (id: number) => req(`/bookings/${id}/cancel`, { method: "POST" }),

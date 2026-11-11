@@ -255,6 +255,19 @@ def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
             (booking["cycle_id"],))
         return {"ok": True, "end_otp": end_code}
 
+@app.post("/bookings/{booking_id}/end-otp")
+def new_end_otp(booking_id: int, user=Depends(current_user)):
+    """Renter gets the end OTP again (e.g. after a page reload). A fresh code replaces the old one."""
+    code = new_code()
+    with pool.connection() as conn:
+        result = conn.execute(
+            "UPDATE bookings SET end_otp = %s WHERE id = %s AND renter_id = %s AND status = 'active'",
+            (hash_code(code, booking_id), booking_id, user["id"]))
+        if result.rowcount == 0:
+            raise HTTPException(409, "no active ride")
+        return {"end_otp": code}
+
+
 @app.post("/bookings/{booking_id}/complete")
 def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
     with pool.connection() as conn:
