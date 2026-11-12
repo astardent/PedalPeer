@@ -181,6 +181,13 @@ def request_booking(body: NewBooking, user=Depends(current_user)):
             raise HTTPException(404, "cycle not available")
         if cycle["owner_id"] == user["id"]:
             raise HTTPException(400, "cannot book your own cycle")
+        clash = conn.execute(
+            """SELECT start_time, end_time FROM bookings
+               WHERE cycle_id = %s AND status IN ('accepted', 'active')
+                 AND start_time < %s AND end_time > %s""",
+            (body.cycle_id, body.end_time, body.start_time)).fetchone()
+        if clash:
+            raise HTTPException(409, "cycle is already booked for part of that time")
         row = conn.execute(
             """INSERT INTO bookings (cycle_id, renter_id, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING *""",
             (body.cycle_id, user["id"], body.start_time, body.end_time)).fetchone()
@@ -195,7 +202,7 @@ def my_bookings(user=Depends(current_user)):
 
 @app.get("/bookings/incoming")
 def incoming_bookings(user=Depends(current_user)):
-    """Bookings on my cycles that I need to accept/reject."""
+    """Bookings on my cycles waiting for me: new requests and accepted ones not yet started."""
     with pool.connection() as conn:
         return conn.execute(
             """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status IN ('requested', 'accepted') ORDER BY b.created_at DESC""",
@@ -227,14 +234,24 @@ def get_booking(booking_id: int, user=Depends(current_user)):
 def accept_booking(booking_id: int, user=Depends(current_user)):
     code = new_code()
     with pool.connection() as conn:
-        result = conn.execute(
-            """UPDATE bookings b SET status = 'accepted', start_otp = %s FROM cycles c
-               WHERE b.id = %s AND b.cycle_id = c.id AND c.owner_id = %s AND b.status = 'requested'""",
-            (hash_code(code, booking_id), booking_id, user["id"]))
-        if result.rowcount == 0:
+        booking = conn.execute(
+            """SELECT b.* FROM bookings b JOIN cycles c ON b.cycle_id = c.id
+               WHERE b.id = %s AND c.owner_id = %s AND b.status = 'requested'""",
+            (booking_id, user["id"])).fetchone()
+        if not booking:
             raise HTTPException(409, "not allowed")
-        
-        return {"ok": True, "start_otp": code}    
+
+        clash = conn.execute(
+            """SELECT id FROM bookings
+               WHERE cycle_id = %s AND id <> %s AND status IN ('accepted', 'active')
+                 AND start_time < %s AND end_time > %s""",
+            (booking["cycle_id"], booking_id, booking["end_time"], booking["start_time"])).fetchone()
+        if clash:
+            raise HTTPException(409, f"clashes with booking #{clash['id']} at the same time")
+
+        conn.execute("UPDATE bookings SET status = 'accepted', start_otp = %s WHERE id = %s",
+                     (hash_code(code, booking_id), booking_id))
+        return {"ok": True, "start_otp": code}
 
 @app.post("/bookings/{booking_id}/start-otp")
 def new_start_otp(booking_id: int, user=Depends(current_user)):
@@ -248,7 +265,6 @@ def new_start_otp(booking_id: int, user=Depends(current_user)):
         if result.rowcount == 0:
             raise HTTPException(409, "not waiting for the ride to start")
         return {"start_otp": code}
-
 
 @app.post("/bookings/{booking_id}/start")
 def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
@@ -264,9 +280,6 @@ def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
 
         conn.execute("UPDATE bookings SET status = 'active', end_otp = %s WHERE id = %s",
             (hash_code(end_code, booking_id), booking_id))
-        
-        conn.execute("UPDATE cycles SET is_available = FALSE WHERE id = %s",
-            (booking["cycle_id"],))
         return {"ok": True, "end_otp": end_code}
 
 @app.post("/bookings/{booking_id}/end-otp")
@@ -293,9 +306,6 @@ def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)
             raise HTTPException(403, "wrong OTP")
         
         conn.execute("UPDATE bookings SET status = 'completed' WHERE id = %s", (booking_id,))
-
-        conn.execute("UPDATE cycles SET is_available = TRUE WHERE id = %s",(booking["cycle_id"],))
-
         return {"ok": True}
 
 @app.post("/bookings/{booking_id}/cancel")
@@ -307,7 +317,7 @@ def cancel_booking(booking_id: int, user=Depends(current_user)):
                  AND (b.renter_id = %s OR c.owner_id = %s)
                  AND b.status IN ('requested', 'accepted')""",
             (booking_id, user["id"], user["id"]))
-  
+
         if result.rowcount == 0:
             raise HTTPException(409, "cannot cancel")
         return {"ok": True}

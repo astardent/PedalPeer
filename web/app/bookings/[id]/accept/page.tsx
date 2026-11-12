@@ -47,7 +47,6 @@ export default function AcceptBooking() {
             <p className="text-gray-500 text-sm mb-6">Share this start OTP with the renter in person.</p>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center mb-4">
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{otp}</p>
-              {/* <p className="text-xs text-blue-400 mt-2">Start OTP — note this down, it won't show again</p> */}
               <p className="text-xs text-blue-400 mt-2">Start OTP — shown here until the ride starts</p>
             </div>
             <Link href="/dashboard"

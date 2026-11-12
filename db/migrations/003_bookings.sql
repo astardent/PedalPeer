@@ -14,7 +14,3 @@ CREATE TABLE bookings (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (end_time > start_time)
 );
-
--- Prevent overlapping bookings for same cycle
-CREATE UNIQUE INDEX no_overlap ON bookings (cycle_id, status)
-    WHERE status IN ('accepted', 'active');

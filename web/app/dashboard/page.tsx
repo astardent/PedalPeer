@@ -75,7 +75,7 @@ export default function Dashboard() {
                   </div>
                   <Link href={`/bookings/${b.id}/accept`}
                     className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700">
-                      {b.status === "accepted" ? "Show OTP" : "Review"}
+                    {b.status === "accepted" ? "Show OTP" : "Review"}
                   </Link>
                 </div>
               ))}

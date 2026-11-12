@@ -28,6 +28,8 @@ Make sure you have the following installed on your machine:
    # Run against your PostgreSQL instance:
    psql -d <your_database_name> -f db/migrations/001_init.sql
    psql -d <your_database_name> -f db/migrations/002_cycles.sql
+   psql -d <your_database_name> -f db/migrations/003_bookings.sql
+   psql -d <your_database_name> -f db/migrations/004_condition_ledger.sql
    ```
 
 ---
