@@ -59,6 +59,7 @@ export const api = {
     active:   () => req("/bookings/active-on-my-cycles"),
     get:      (id: number) => req(`/bookings/${id}`),
     accept:   (id: number) => req(`/bookings/${id}/accept`, { method: "POST" }),
+    startOtp: (id: number) => req(`/bookings/${id}/start-otp`, { method: "POST" }),
     start:    (id: number, code: string) =>
       req(`/bookings/${id}/start`,    { method: "POST", body: JSON.stringify({ code }) }),
     endOtp:   (id: number) => req(`/bookings/${id}/end-otp`, { method: "POST" }),

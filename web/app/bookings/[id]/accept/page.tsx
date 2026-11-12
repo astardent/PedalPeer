@@ -12,7 +12,11 @@ export default function AcceptBooking() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.bookings.get(Number(id)).then(setBooking).catch(() => router.push("/dashboard"));
+    api.bookings.get(Number(id)).then(b => {
+      setBooking(b);
+      if (b.status === "accepted") api.bookings.startOtp(Number(id)).then(d => setOtp(d.start_otp));
+      else if (b.status !== "requested") router.push("/dashboard");
+    }).catch(() => router.push("/dashboard"));
   }, [id]);
 
   async function accept() {
@@ -41,7 +45,8 @@ export default function AcceptBooking() {
             <p className="text-gray-500 text-sm mb-6">Share this start OTP with the renter in person.</p>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center mb-4">
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{otp}</p>
-              <p className="text-xs text-blue-400 mt-2">Start OTP — note this down, it won't show again</p>
+              {/* <p className="text-xs text-blue-400 mt-2">Start OTP — note this down, it won't show again</p> */}
+              <p className="text-xs text-blue-400 mt-2">Start OTP — shown here until the ride starts</p>
             </div>
             <Link href="/dashboard"
               className="block text-center bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-blue-700">

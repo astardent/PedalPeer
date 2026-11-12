@@ -198,7 +198,7 @@ def incoming_bookings(user=Depends(current_user)):
     """Bookings on my cycles that I need to accept/reject."""
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'requested' ORDER BY b.created_at DESC""",
+            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status IN ('requested', 'accepted') ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/active-on-my-cycles")
@@ -235,6 +235,20 @@ def accept_booking(booking_id: int, user=Depends(current_user)):
             raise HTTPException(409, "not allowed")
         
         return {"ok": True, "start_otp": code}    
+
+@app.post("/bookings/{booking_id}/start-otp")
+def new_start_otp(booking_id: int, user=Depends(current_user)):
+    """Owner gets the start OTP again until the ride starts. A fresh code replaces the old one."""
+    code = new_code()
+    with pool.connection() as conn:
+        result = conn.execute(
+            """UPDATE bookings b SET start_otp = %s FROM cycles c
+               WHERE b.id = %s AND b.cycle_id = c.id AND c.owner_id = %s AND b.status = 'accepted'""",
+            (hash_code(code, booking_id), booking_id, user["id"]))
+        if result.rowcount == 0:
+            raise HTTPException(409, "not waiting for the ride to start")
+        return {"start_otp": code}
+
 
 @app.post("/bookings/{booking_id}/start")
 def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
