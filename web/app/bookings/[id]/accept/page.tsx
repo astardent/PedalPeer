@@ -30,8 +30,10 @@ export default function AcceptBooking() {
 
   async function decline() {
     if (!confirm("Decline this request?")) return;
-    await api.bookings.cancel(Number(id));
-    router.push("/dashboard");
+    try {
+      await api.bookings.cancel(Number(id));
+      router.push("/dashboard");
+    } catch (err: any) { alert(err.message); }
   }
 
   if (!booking) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;

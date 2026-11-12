@@ -301,13 +301,17 @@ def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)
 @app.post("/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int, user=Depends(current_user)):
     with pool.connection() as conn:
-        result = conn.execute("""UPDATE bookings SET status = 'cancelled' WHERE id = %s AND renter_id = %s AND status IN ('requested', 'accepted')""",
-            (booking_id, user["id"]))
-        
+        result = conn.execute(
+            """UPDATE bookings b SET status = 'cancelled' FROM cycles c
+               WHERE b.id = %s AND b.cycle_id = c.id
+                 AND (b.renter_id = %s OR c.owner_id = %s)
+                 AND b.status IN ('requested', 'accepted')""",
+            (booking_id, user["id"], user["id"]))
+  
         if result.rowcount == 0:
             raise HTTPException(409, "cannot cancel")
         return {"ok": True}
-
+    
 # condition ledger
 
 def get_booking_member(conn, booking_id: int, user_id: int):
