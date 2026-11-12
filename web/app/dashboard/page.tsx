@@ -13,6 +13,21 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "bg-red-100 text-red-400",
 };
 
+function fmt(s?: string | null) {
+  return s ? new Date(s).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—";
+}
+
+function Times({ b }: { b: any }) {
+  return (
+    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+      <p>Booked: {fmt(b.start_time)} → {fmt(b.end_time)}</p>
+      {b.actual_start && (
+        <p>Actual: {fmt(b.actual_start)} → {b.actual_end ? fmt(b.actual_end) : "riding now"}</p>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
@@ -20,6 +35,7 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [incoming, setIncoming] = useState<any[]>([]);
   const [active, setActive]     = useState<any[]>([]);
+  const [history, setHistory]   = useState<any[]>([]);
   const [ready, setReady]       = useState(false);
 
   useEffect(() => {
@@ -30,8 +46,9 @@ export default function Dashboard() {
       api.bookings.mine(),
       api.bookings.incoming(),
       api.bookings.active(),
-    ]).then(([c, b, i, a]) => {
-      setCycles(c); setBookings(b); setIncoming(i); setActive(a);
+      api.bookings.history(),
+    ]).then(([c, b, i, a, h]) => {
+      setCycles(c); setBookings(b); setIncoming(i); setActive(a); setHistory(h);
     }).finally(() => setReady(true));
   }, [user, authLoading]);
 
@@ -69,9 +86,8 @@ export default function Dashboard() {
                 <div key={b.id} className="bg-white rounded-xl border p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{b.cycle_title}</p>
-                    <p className="text-sm text-gray-500">
-                      {b.renter_name} : {new Date(b.start_time).toLocaleDateString()} – {new Date(b.end_time).toLocaleDateString()}
-                    </p>
+                    <p className="text-sm text-gray-500">Requested by {b.renter_name}</p>
+                    <Times b={b} />
                   </div>
                   <Link href={`/bookings/${b.id}/accept`}
                     className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700">
@@ -93,11 +109,27 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium">{b.cycle_title}</p>
                     <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
+                    <Times b={b} />
                   </div>
                   <Link href={`/bookings/${b.id}/complete`}
                     className="bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700">
                     Complete
                   </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {history.length > 0 && (
+          <section>
+            <h2 className="font-semibold text-lg mb-3 text-gray-700">✅ Completed rides on your cycles</h2>
+            <div className="space-y-3">
+              {history.map((b: any) => (
+                <div key={b.id} className="bg-white rounded-xl border p-4">
+                  <p className="font-medium">{b.cycle_title}</p>
+                  <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
+                  <Times b={b} />
                 </div>
               ))}
             </div>
@@ -114,9 +146,8 @@ export default function Dashboard() {
                   <div key={b.id} className="bg-white rounded-xl border p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium">{b.cycle_title}</p>
-                      <p className="text-sm text-gray-500">
-                        {b.hostel} : {new Date(b.start_time).toLocaleDateString()}
-                      </p>
+                      <p className="text-sm text-gray-500">{b.hostel}</p>
+                      <Times b={b} />
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_STYLE[b.status]}`}>
                         {b.status}
                       </span>

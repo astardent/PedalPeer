@@ -57,6 +57,7 @@ export const api = {
     mine:     () => req("/bookings/mine"),
     incoming: () => req("/bookings/incoming"),
     active:   () => req("/bookings/active-on-my-cycles"),
+    history:  () => req("/bookings/history-on-my-cycles"),
     get:      (id: number) => req(`/bookings/${id}`),
     accept:   (id: number) => req(`/bookings/${id}/accept`, { method: "POST" }),
     startOtp: (id: number) => req(`/bookings/${id}/start-otp`, { method: "POST" }),

@@ -176,7 +176,7 @@ def delete_cycle(cycle_id: int, user=Depends(current_user)):
 @app.post("/bookings", status_code=201)
 def request_booking(body: NewBooking, user=Depends(current_user)):
     with pool.connection() as conn:
-        cycle = conn.execute("SELECT * FROM cycles WHERE id = %s AND is_available = TRUE", (body.cycle_id,)).fetchone()
+        cycle = conn.execute("SELECT * FROM cycles WHERE id = %s AND is_available = TRUE FOR UPDATE", (body.cycle_id,)).fetchone()
         if not cycle:
             raise HTTPException(404, "cycle not available")
         if cycle["owner_id"] == user["id"]:
@@ -188,6 +188,13 @@ def request_booking(body: NewBooking, user=Depends(current_user)):
             (body.cycle_id, body.end_time, body.start_time)).fetchone()
         if clash:
             raise HTTPException(409, "cycle is already booked for part of that time")
+        duplicate = conn.execute(
+            """SELECT id FROM bookings
+               WHERE cycle_id = %s AND renter_id = %s AND status IN ('requested', 'accepted', 'active')
+                 AND start_time < %s AND end_time > %s""",
+            (body.cycle_id, user["id"], body.end_time, body.start_time)).fetchone()
+        if duplicate:
+            raise HTTPException(409, "you already have a booking for this cycle at that time")
         row = conn.execute(
             """INSERT INTO bookings (cycle_id, renter_id, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING *""",
             (body.cycle_id, user["id"], body.start_time, body.end_time)).fetchone()
@@ -216,12 +223,20 @@ def active_on_my_cycles(user=Depends(current_user)):
             """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'active' ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
+@app.get("/bookings/history-on-my-cycles")
+def history_on_my_cycles(user=Depends(current_user)):
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC""",
+            (user["id"],)).fetchall()
+
 @app.get("/bookings/{booking_id}")
 def get_booking(booking_id: int, user=Depends(current_user)):
     """One booking, visible only to its renter or the cycle's owner."""
     with pool.connection() as conn:
         row = conn.execute(
             """SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
+                      b.actual_start, b.actual_end,
                       c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
                WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
@@ -278,7 +293,7 @@ def start_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)):
             raise HTTPException(403, "wrong OTP")
         end_code = new_code()
 
-        conn.execute("UPDATE bookings SET status = 'active', end_otp = %s WHERE id = %s",
+        conn.execute("UPDATE bookings SET status = 'active', end_otp = %s, actual_start = NOW() WHERE id = %s",
             (hash_code(end_code, booking_id), booking_id))
         return {"ok": True, "end_otp": end_code}
 
@@ -305,7 +320,7 @@ def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)
         if not verify_code(body.code, booking["end_otp"], booking_id):
             raise HTTPException(403, "wrong OTP")
         
-        conn.execute("UPDATE bookings SET status = 'completed' WHERE id = %s", (booking_id,))
+        conn.execute("UPDATE bookings SET status = 'completed', actual_end = NOW() WHERE id = %s", (booking_id,))
         return {"ok": True}
 
 @app.post("/bookings/{booking_id}/cancel")

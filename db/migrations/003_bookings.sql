@@ -11,6 +11,8 @@ CREATE TABLE bookings (
     status       booking_status NOT NULL DEFAULT 'requested',
     start_otp    CHAR(64),      -- hashed, set when accepted
     end_otp      CHAR(64),      -- hashed, set when active
+    actual_start TIMESTAMPTZ,
+    actual_end   TIMESTAMPTZ,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (end_time > start_time)
 );

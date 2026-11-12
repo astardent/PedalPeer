@@ -29,6 +29,7 @@ export default function CycleDetail() {
         end_time:   new Date(form.end_time).toISOString(),
       });
       setMsg("  Booking requested! Owner will accept soon.");
+      setForm({ start_time: "", end_time: "" });
     } catch (err: any) { setMsg("  " + (err.message ?? "Failed")); }
     finally { setLoading(false); }
   }
