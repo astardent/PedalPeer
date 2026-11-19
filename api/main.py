@@ -1,6 +1,7 @@
 import os,shutil,uuid
 from pathlib import Path
-from fastapi import FastAPI, HTTPException,Depends,UploadFile,File
+from fastapi import FastAPI, HTTPException,Depends,UploadFile,File,Form
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import pool
@@ -21,8 +22,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = Path("uploads")
+# absolute path, so it doesn't depend on which folder uvicorn is started from
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+# serves saved photos at <api>/uploads/<name>
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_PHOTO_BYTES = 8 * 1024 * 1024
+# pre = renter, after the ride starts; post = owner, after the ride is completed
+STAGE_STATUS = {"pre": "active", "post": "completed"}
 
 @app.get("/health")
 def health():
@@ -341,7 +350,7 @@ def cancel_booking(booking_id: int, user=Depends(current_user)):
 
 def get_booking_member(conn, booking_id: int, user_id: int):
     """Only the renter or the cycle owner may touch a booking's photos."""
-    row = conn.execute("""SELECT b.renter_id, c.owner_id FROM bookings b JOIN cycles c ON b.cycle_id = c.id
+    row = conn.execute("""SELECT b.renter_id, b.status, c.owner_id FROM bookings b JOIN cycles c ON b.cycle_id = c.id
                           WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
         (booking_id, user_id, user_id)).fetchone()
     if not row:
@@ -353,15 +362,14 @@ def upload_photo(
     booking_id: int,
     stage: str,
     file: UploadFile = File(...),
-    user=Depends(current_user)
+    notes: Optional[str] = Form(None),
+    user=Depends(current_user),
 ):
-    if stage not in ("pre", "post"):
+    if stage not in STAGE_STATUS:
         raise HTTPException(400, "stage must be pre or post")
-
-    # keep only the base name so "../x" can't escape UPLOAD_DIR
-    filename = Path(file.filename or "").name
-    if not filename:
-        raise HTTPException(400, "missing filename")
+    ext = ALLOWED_TYPES.get(file.content_type)
+    if not ext:
+        raise HTTPException(400, "only JPEG, PNG or WebP images are allowed")
 
     with pool.connection() as conn:
         booking = get_booking_member(conn, booking_id, user["id"])
@@ -370,17 +378,33 @@ def upload_photo(
             raise HTTPException(403, "only the renter can upload pre photos")
         if stage == "post" and booking["owner_id"] != user["id"]:
             raise HTTPException(403, "only the owner can upload post photos")
+        if booking["status"] != STAGE_STATUS[stage]:
+            raise HTTPException(409, "pre photos can be added once the ride has started"
+                                     if stage == "pre" else
+                                     "post photos can be added once the ride is completed")
 
-        # uuid keeps two photos with the same name from overwriting each other
-        dest = UPLOAD_DIR / f"{booking_id}_{stage}_{uuid.uuid4().hex}_{filename}"
+        # our own name + a safe image extension; the uploaded filename is ignored
+        dest = UPLOAD_DIR / f"{booking_id}_{stage}_{uuid.uuid4().hex}{ext}"
+        size, too_big = 0, False
         with dest.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
+            while chunk := file.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_PHOTO_BYTES:
+                    too_big = True
+                    break
+                f.write(chunk)
+        if too_big:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(413, "photo must be under 8 MB")
 
-        row = conn.execute(
-            """INSERT INTO condition_ledger (booking_id, stage, photo_path)
-               VALUES (%s, %s, %s) RETURNING *""",(booking_id, stage, str(dest))).fetchone()
-
-        return row
+        try:
+            return conn.execute(
+                """INSERT INTO condition_ledger (booking_id, stage, photo_path, notes)
+                   VALUES (%s, %s, %s, %s) RETURNING *""",
+                (booking_id, stage, f"/uploads/{dest.name}", notes or None)).fetchone()
+        except Exception:
+            dest.unlink(missing_ok=True)  # don't leave orphan files if the insert fails
+            raise
 
 @app.get("/bookings/{booking_id}/photos")
 def get_photos(booking_id: int, user=Depends(current_user)):
