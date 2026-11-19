@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { Rating } from "@/components/Rating";
 
 const STATUS_STYLE: Record<string, string> = {
   requested: "bg-yellow-100 text-yellow-700",
@@ -57,7 +58,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <span className="font-bold text-blue-600 text-lg">🚲 PedalPeer</span>
+        <span className="font-bold text-blue-600 text-lg">PedalPeer</span>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 hidden sm:block">{user?.username}</span>
           <Link href="/cycles/new"
@@ -80,13 +81,14 @@ export default function Dashboard() {
         {/* Incoming requests */}
         {incoming.length > 0 && (
           <section>
-            <h2 className="font-semibold text-lg mb-3 text-orange-600">⏳ Booking requests on your cycles</h2>
+            <h2 className="font-semibold text-lg mb-3 text-orange-600">Booking requests on your cycles</h2>
             <div className="space-y-3">
               {incoming.map((b: any) => (
                 <div key={b.id} className="bg-white rounded-xl border p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{b.cycle_title}</p>
-                    <p className="text-sm text-gray-500">Requested by {b.renter_name}</p>
+                    <p className="text-sm text-gray-500">Requested by {b.renter_name}{" "}
+                      <Rating value={b.renter_rating} count={b.renter_rating_count} /></p>
                     <Times b={b} />
                   </div>
                   <Link href={`/bookings/${b.id}/accept`}
@@ -102,7 +104,7 @@ export default function Dashboard() {
         {/* Active rides on my cycles — owner can complete */}
         {active.length > 0 && (
           <section>
-            <h2 className="font-semibold text-lg mb-3 text-green-700">🟢 Active rides on your cycles</h2>
+            <h2 className="font-semibold text-lg mb-3 text-green-700">Active rides on your cycles</h2>
             <div className="space-y-3">
               {active.map((b: any) => (
                 <div key={b.id} className="bg-white rounded-xl border p-4 flex items-center justify-between">
@@ -123,14 +125,17 @@ export default function Dashboard() {
 
         {history.length > 0 && (
           <section>
-            <h2 className="font-semibold text-lg mb-3 text-gray-700">✅ Completed rides on your cycles</h2>
+            <h2 className="font-semibold text-lg mb-3 text-gray-700">Completed rides on your cycles</h2>
             <div className="space-y-3">
               {history.map((b: any) => (
                 <div key={b.id} className="bg-white rounded-xl border p-4">
                   <p className="font-medium">{b.cycle_title}</p>
                   <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
                   <Times b={b} />
-                  <Link href={`/bookings/${b.id}/photos`} className="text-xs text-blue-600 hover:underline mt-1 inline-block">📷 Photos</Link>
+                  <Link href={`/bookings/${b.id}/photos`} className="text-xs text-blue-600 hover:underline mt-1 inline-block">Photos</Link>
+                  {!b.reviewed && (
+                    <Link href={`/bookings/${b.id}/review`} className="text-xs text-amber-700 hover:underline mt-1 ml-3 inline-block">Rate renter</Link>
+                  )}
                 </div>
               ))}
             </div>
@@ -160,10 +165,18 @@ export default function Dashboard() {
                       </Link>
                     )}
                     {b.status === "completed" && (
-                      <Link href={`/bookings/${b.id}/photos`}
-                        className="text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50">
-                        📷 Photos
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link href={`/bookings/${b.id}/photos`}
+                          className="text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50">
+                          Photos
+                        </Link>
+                        {!b.reviewed && (
+                          <Link href={`/bookings/${b.id}/review`}
+                            className="text-sm text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-50">
+                            Rate cycle
+                          </Link>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -185,7 +198,9 @@ export default function Dashboard() {
                     className="bg-white rounded-xl border p-4 hover:shadow-md transition block">
                     <div className="flex justify-between">
                       <div>
-                        <p className="font-medium">{c.title}</p>
+                        <p className="font-medium">
+                          {c.title} <Rating value={c.rating} count={c.rating_count} />
+                        </p>
                         <p className="text-sm text-gray-500">{c.hostel ?? "—"}</p>
                       </div>
                       <span className="text-blue-600 font-semibold text-sm">₹{c.price_per_hour}/hr</span>

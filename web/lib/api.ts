@@ -47,6 +47,7 @@ export const api = {
     list:   (hostel?: string) => req(`/cycles${hostel ? `?hostel=${hostel}` : ""}`),
     mine:   () => req("/cycles/mine"),
     get:    (id: number) => req(`/cycles/${id}`),
+    reviews: (id: number) => req(`/cycles/${id}/reviews`),
     create: (d: object) => req("/cycles", { method: "POST", body: JSON.stringify(d) }),
     toggle: (id: number) => req(`/cycles/${id}/toggle`, { method: "PATCH" }),
     delete: (id: number) => req(`/cycles/${id}`, { method: "DELETE" }),
@@ -70,5 +71,7 @@ export const api = {
     photos:   (id: number) => req(`/bookings/${id}/photos`),
     uploadPhoto: (id: number, stage: "pre" | "post", file: File, notes?: string) =>
       upload(`/bookings/${id}/photos/${stage}`, file, notes),
+    review: (id: number, stars: number, comment?: string) =>
+      req(`/bookings/${id}/review`, { method: "POST", body: JSON.stringify({ stars, comment }) }),
   },
 };

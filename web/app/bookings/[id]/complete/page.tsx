@@ -32,7 +32,11 @@ export default function CompleteBooking() {
             <p className="text-sm text-green-700">Booking completed!</p>
             <Link href={`/bookings/${id}/photos`}
               className="block text-center bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700">
-              📷 Add post-ride photos (optional)
+              Add post-ride photos (optional)
+            </Link>
+            <Link href={`/bookings/${id}/review`}
+              className="block text-center border border-amber-400 text-amber-700 rounded-lg py-2 text-sm hover:bg-amber-50">
+              Rate the renter
             </Link>
             <Link href="/dashboard" className="block text-center text-sm text-gray-500 hover:text-blue-600">
               Skip, back to dashboard

@@ -24,7 +24,6 @@ export default function PhotoUpload() {
       .catch(() => router.push("/dashboard"));
   }, [id]);
 
-  // renter adds "pre" photos once the ride is active; owner adds "post" photos once it's completed
   const stage: "pre" | "post" | null =
     booking && user && booking.renter_id === user.id && booking.status === "active"    ? "pre"  :
     booking && user && booking.owner_id  === user.id && booking.status === "completed" ? "post" : null;
@@ -55,7 +54,7 @@ export default function PhotoUpload() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
-        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">🚲 PedalPeer</Link>
+        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
         <span className="text-gray-300">|</span>
         <span className="text-gray-600 text-sm">Condition Photos</span>
       </nav>
@@ -98,7 +97,6 @@ export default function PhotoUpload() {
               {preview
                 ? <img src={preview} alt="preview" className="max-h-48 mx-auto rounded-lg object-cover" />
                 : <div className="text-gray-400">
-                  <p className="text-3xl mb-2">📷</p>
                   <p className="text-sm">Click to choose a photo</p>
                 </div>
               }

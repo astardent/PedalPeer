@@ -33,7 +33,7 @@ export default function MyCycles() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
-        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">🚲 PedalPeer</Link>
+        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
         <span className="text-gray-300">|</span>
         <span className="text-gray-600 text-sm">My Cycles</span>
         <div className="ml-auto">
@@ -45,7 +45,6 @@ export default function MyCycles() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {cycles.length === 0
           ? <div className="text-center py-16">
-              <p className="text-4xl mb-3">🚲</p>
               <p className="text-gray-500 mb-4">You haven't listed any cycles yet.</p>
               <Link href="/cycles/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
                 List your first cycle

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Rating } from "@/components/Rating";
 
 const HOSTELS = ["H1","H2","H3","H4","H5","H6","H7","H8","H9","H10","H11","H12","H13","H14","H15","H16","Tansa","Qip"];
 
@@ -18,7 +19,7 @@ export default function CyclesPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
-        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">🚲 PedalPeer</Link>
+        <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
         <span className="text-gray-300">|</span>
         <span className="text-gray-600 text-sm">Browse Cycles</span>
       </nav>
@@ -51,7 +52,10 @@ export default function CyclesPage() {
                       </div>
                       <span className="text-blue-600 font-semibold text-sm whitespace-nowrap">₹{c.price_per_hour}/hr</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-3">by {c.owner_name}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <p className="text-xs text-gray-400">by {c.owner_name}</p>
+                      <Rating value={c.rating} count={c.rating_count} />
+                    </div>
                   </Link>
                 ))}
               </div>

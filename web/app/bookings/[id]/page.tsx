@@ -85,7 +85,7 @@ export default function ManageBooking() {
             </div>
             <Link href={`/bookings/${id}/photos`}
               className="block mt-4 text-center text-sm text-blue-600 border border-blue-300 rounded-lg py-2 hover:bg-blue-50">
-              📷 Add pre-ride photos (optional)
+              Add pre-ride photos (optional)
             </Link>
           </div>
         )}

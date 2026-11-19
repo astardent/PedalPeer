@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Rating } from "@/components/Rating";
 
 export default function AcceptBooking() {
   const { id } = useParams();
@@ -58,7 +59,8 @@ export default function AcceptBooking() {
             <h1 className="text-xl font-bold mb-2">Booking Request</h1>
             <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2 text-sm">
               <p><span className="text-gray-500">Cycle:</span> <strong>{booking.cycle_title}</strong></p>
-              <p><span className="text-gray-500">Renter:</span> {booking.renter_name}</p>
+              <p><span className="text-gray-500">Renter:</span> {booking.renter_name}{" "}
+                <Rating value={booking.renter_rating} count={booking.renter_rating_count} /></p>
               <p><span className="text-gray-500">From:</span> {new Date(booking.start_time).toLocaleString()}</p>
               <p><span className="text-gray-500">To:</span> {new Date(booking.end_time).toLocaleString()}</p>
             </div>

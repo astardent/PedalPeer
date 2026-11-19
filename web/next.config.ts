@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+const allowedDevOrigins = process.env.ALLOWED_DEV_ORIGINS
+  ? process.env.ALLOWED_DEV_ORIGINS.split(",").map((origin) => origin.trim())
+  : [];
+
 const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
@@ -7,7 +11,7 @@ const nextConfig: NextConfig = {
   },
   cacheComponents: true,
   partialPrefetching: true,
-  allowedDevOrigins: ["10.140.55.7"],
+  allowedDevOrigins,
   turbopack: {
     rules: {
       "*.css": {
