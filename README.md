@@ -30,7 +30,9 @@ Make sure you have the following installed on your machine:
    psql -d <your_database_name> -f db/migrations/002_cycles.sql
    psql -d <your_database_name> -f db/migrations/003_bookings.sql
    psql -d <your_database_name> -f db/migrations/004_condition_ledger.sql
+   psql -d <your_database_name> -f db/migrations/005_booking_actual_times.sql
    ```
+   If your database already exists, just run any migrations you haven't applied yet (e.g. `005`).
 
 ---
 
