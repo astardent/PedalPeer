@@ -22,16 +22,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# absolute path, so it doesn't depend on which folder uvicorn is started from
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
-# serves saved photos at <api>/uploads/<name>
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
-# pre = renter, after the ride starts; post = owner, after the ride is completed
 STAGE_STATUS = {"pre": "active", "post": "completed"}
+
+CYCLE_RATING_SQL = """
+    (SELECT ROUND(AVG(r.stars), 1)::float FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
+      WHERE r.target = 'cycle' AND rb.cycle_id = c.id) AS rating,
+    (SELECT COUNT(*) FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
+      WHERE r.target = 'cycle' AND rb.cycle_id = c.id) AS rating_count"""
+
+RENTER_RATING_SQL = """
+    (SELECT ROUND(AVG(r.stars), 1)::float FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
+      WHERE r.target = 'renter' AND rb.renter_id = b.renter_id) AS renter_rating,
+    (SELECT COUNT(*) FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
+      WHERE r.target = 'renter' AND rb.renter_id = b.renter_id) AS renter_rating_count"""
 
 @app.get("/health")
 def health():
@@ -82,6 +91,10 @@ class NewBooking(BaseModel):
 class OTPSubmit(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
+class NewReview(BaseModel):
+    stars:   int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(default=None, max_length=500)
+
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
     with pool.connection() as conn:
@@ -129,10 +142,12 @@ def me(user=Depends(current_user)):
 def list_cycles(hostel: Optional[str] = None):
     with pool.connection() as conn:
         if hostel:
-            rows = conn.execute("""SELECT c.*, u.username as owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+            rows = conn.execute(f"""SELECT c.*, u.username as owner_name, {CYCLE_RATING_SQL}
+                   FROM cycles c JOIN users u ON c.owner_id = u.id
                    WHERE c.is_available = TRUE AND c.hostel = %s ORDER BY c.created_at DESC""",(hostel,)).fetchall()
         else:
-            rows = conn.execute("""SELECT c.*, u.username as owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
+            rows = conn.execute(f"""SELECT c.*, u.username as owner_name, {CYCLE_RATING_SQL}
+                   FROM cycles c JOIN users u ON c.owner_id = u.id
                    WHERE c.is_available = TRUE ORDER BY c.created_at DESC""").fetchall()
         return rows
 
@@ -149,27 +164,30 @@ def my_cycles(user=Depends(current_user)):
 def get_cycle(cycle_id: int):
     with pool.connection() as conn:
         row = conn.execute(
-            """SELECT c.*, u.username AS owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
-               WHERE c.id = %s""", (cycle_id,)).fetchone()
+            f"""SELECT c.*, u.username AS owner_name, {CYCLE_RATING_SQL}
+                FROM cycles c JOIN users u ON c.owner_id = u.id WHERE c.id = %s""", (cycle_id,)).fetchone()
         if not row:
             raise HTTPException(404, "cycle not found")
         return row
+
+@app.get("/cycles/{cycle_id}/reviews")
+def cycle_reviews(cycle_id: int):
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT r.id, r.stars, r.comment, r.created_at, u.username AS reviewer_name
+               FROM reviews r
+               JOIN bookings b ON b.id = r.booking_id
+               JOIN users u ON u.id = r.reviewer_id
+               WHERE r.target = 'cycle' AND b.cycle_id = %s
+               ORDER BY r.created_at DESC
+               LIMIT 20""",
+            (cycle_id,)).fetchall()
 
 @app.post("/cycles", status_code=201)
 def create_cycle(body: NewCycle, user=Depends(current_user)):
     with pool.connection() as conn:
         row = conn.execute("""INSERT INTO cycles (owner_id, title, description, price_per_hour, hostel, lat, lng) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *""",
             (user["id"], body.title, body.description,body.price_per_hour, body.hostel, body.lat, body.lng)).fetchone()
-        return row
-
-@app.get("/cycles/{cycle_id}")
-def get_cycle(cycle_id: int):
-    with pool.connection() as conn:
-        row = conn.execute(
-            """SELECT c.*, u.username AS owner_name FROM cycles c JOIN users u ON c.owner_id = u.id
-               WHERE c.id = %s""", (cycle_id,)).fetchone()
-        if not row:
-            raise HTTPException(404, "cycle not found")
         return row
 
 @app.delete("/cycles/{cycle_id}")
@@ -213,7 +231,9 @@ def request_booking(body: NewBooking, user=Depends(current_user)):
 def my_bookings(user=Depends(current_user)):
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, c.hostel FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s ORDER BY b.created_at DESC""",
+            """SELECT b.*, c.title as cycle_title, c.hostel,
+                      EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'cycle') AS reviewed
+               FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/incoming")
@@ -221,7 +241,9 @@ def incoming_bookings(user=Depends(current_user)):
     """Bookings on my cycles waiting for me: new requests and accepted ones not yet started."""
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status IN ('requested', 'accepted') ORDER BY b.created_at DESC""",
+            f"""SELECT b.*, c.title as cycle_title, u.username as renter_name, {RENTER_RATING_SQL}
+                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
+                WHERE c.owner_id = %s AND b.status IN ('requested', 'accepted') ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/active-on-my-cycles")
@@ -236,7 +258,10 @@ def active_on_my_cycles(user=Depends(current_user)):
 def history_on_my_cycles(user=Depends(current_user)):
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC""",
+            """SELECT b.*, c.title as cycle_title, u.username as renter_name,
+                      EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'renter') AS reviewed
+               FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
+               WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/{booking_id}")
@@ -244,12 +269,14 @@ def get_booking(booking_id: int, user=Depends(current_user)):
     """One booking, visible only to its renter or the cycle's owner."""
     with pool.connection() as conn:
         row = conn.execute(
-            """SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
+            f"""SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
                       b.actual_start, b.actual_end,
-                      c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name
+                      c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name,
+                      {RENTER_RATING_SQL},
+                      EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.reviewer_id = %s) AS reviewed_by_me
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
                WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
-            (booking_id, user["id"], user["id"])).fetchone()
+            (user["id"], booking_id, user["id"], user["id"])).fetchone()
         if not row:
             raise HTTPException(404, "booking not found")
         return row
@@ -383,7 +410,6 @@ def upload_photo(
                                      if stage == "pre" else
                                      "post photos can be added once the ride is completed")
 
-        # our own name + a safe image extension; the uploaded filename is ignored
         dest = UPLOAD_DIR / f"{booking_id}_{stage}_{uuid.uuid4().hex}{ext}"
         size, too_big = 0, False
         with dest.open("wb") as f:
@@ -403,7 +429,7 @@ def upload_photo(
                    VALUES (%s, %s, %s, %s) RETURNING *""",
                 (booking_id, stage, f"/uploads/{dest.name}", notes or None)).fetchone()
         except Exception:
-            dest.unlink(missing_ok=True)  # don't leave orphan files if the insert fails
+            dest.unlink(missing_ok=True)
             raise
 
 @app.get("/bookings/{booking_id}/photos")
@@ -412,3 +438,21 @@ def get_photos(booking_id: int, user=Depends(current_user)):
         get_booking_member(conn, booking_id, user["id"])
         return conn.execute(
             "SELECT * FROM condition_ledger WHERE booking_id = %s ORDER BY stage, id",(booking_id,)).fetchall()
+
+# reviews
+
+@app.post("/bookings/{booking_id}/review", status_code=201)
+def review_booking(booking_id: int, body: NewReview, user=Depends(current_user)):
+    with pool.connection() as conn:
+        booking = get_booking_member(conn, booking_id, user["id"])
+        if booking["status"] != "completed":
+            raise HTTPException(409, "you can rate only after the ride ends")
+        target = "cycle" if booking["renter_id"] == user["id"] else "renter"
+        row = conn.execute(
+            """INSERT INTO reviews (booking_id, reviewer_id, target, stars, comment)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (booking_id, target) DO NOTHING RETURNING *""",
+            (booking_id, user["id"], target, body.stars, (body.comment or "").strip() or None)).fetchone()
+        if not row:
+            raise HTTPException(409, "already rated")
+        return row
