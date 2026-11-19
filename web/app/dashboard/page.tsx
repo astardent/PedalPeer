@@ -130,6 +130,7 @@ export default function Dashboard() {
                   <p className="font-medium">{b.cycle_title}</p>
                   <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
                   <Times b={b} />
+                  <Link href={`/bookings/${b.id}/photos`} className="text-xs text-blue-600 hover:underline mt-1 inline-block">📷 Photos</Link>
                 </div>
               ))}
             </div>
@@ -156,6 +157,12 @@ export default function Dashboard() {
                       <Link href={`/bookings/${b.id}`}
                         className="text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50">
                         Manage
+                      </Link>
+                    )}
+                    {b.status === "completed" && (
+                      <Link href={`/bookings/${b.id}/photos`}
+                        className="text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50">
+                        📷 Photos
                       </Link>
                     )}
                   </div>

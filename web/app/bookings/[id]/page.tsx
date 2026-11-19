@@ -83,6 +83,10 @@ export default function ManageBooking() {
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{endOtp || "……"}</p>
               <p className="text-xs text-blue-400 mt-2">End OTP</p>
             </div>
+            <Link href={`/bookings/${id}/photos`}
+              className="block mt-4 text-center text-sm text-blue-600 border border-blue-300 rounded-lg py-2 hover:bg-blue-50">
+              📷 Add pre-ride photos (optional)
+            </Link>
           </div>
         )}
 

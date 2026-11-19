@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export default function PhotoUpload() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
+  const [booking, setBooking] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
-  const [stage, setStage] = useState<"pre" | "post">("pre");
   const [notes, setNotes] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -17,8 +19,15 @@ export default function PhotoUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api.bookings.photos(Number(id)).then(setPhotos).catch(() => router.push("/dashboard"));
+    Promise.all([api.bookings.get(Number(id)), api.bookings.photos(Number(id))])
+      .then(([b, p]) => { setBooking(b); setPhotos(p); })
+      .catch(() => router.push("/dashboard"));
   }, [id]);
+
+  // renter adds "pre" photos once the ride is active; owner adds "post" photos once it's completed
+  const stage: "pre" | "post" | null =
+    booking && user && booking.renter_id === user.id && booking.status === "active"    ? "pre"  :
+    booking && user && booking.owner_id  === user.id && booking.status === "completed" ? "post" : null;
 
   function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -29,14 +38,11 @@ export default function PhotoUpload() {
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) { setMsg("Choose a photo first"); return; }
+    if (!file || !stage) { setMsg("Choose a photo first"); return; }
     setMsg(""); setLoading(true);
     try {
       const row = await api.bookings.uploadPhoto(Number(id), stage, file, notes || undefined);
-      setPhotos(ps => {
-        const rest = ps.filter(p => p.stage !== stage);
-        return [...rest, row].sort((a, b) => a.stage.localeCompare(b.stage));
-      });
+      setPhotos(ps => [...ps, row]);
       setMsg("  Photo saved!");
       setFile(null); setPreview(null); setNotes("");
       if (inputRef.current) inputRef.current.value = "";
@@ -78,18 +84,13 @@ export default function PhotoUpload() {
         )}
 
         {/* Upload form */}
+        {stage ? (
         <div className="bg-white rounded-2xl shadow p-6">
-          <h2 className="font-semibold mb-4">Upload photo</h2>
+          <h2 className="font-semibold mb-1">
+            {stage === "pre" ? "Pre-ride condition photos" : "Post-ride condition photos"}
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">Optional. You can skip this.</p>
           <form onSubmit={upload} className="space-y-4">
-            <div className="flex gap-3">
-              {(["pre", "post"] as const).map(s => (
-                <button key={s} type="button" onClick={() => setStage(s)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${stage === s ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 hover:border-blue-400"
-                    }`}>
-                  {s === "pre" ? "Pre-ride" : "Post-ride"}
-                </button>
-              ))}
-            </div>
 
             <div
               onClick={() => inputRef.current?.click()}
@@ -101,7 +102,8 @@ export default function PhotoUpload() {
                   <p className="text-sm">Click to choose a photo</p>
                 </div>
               }
-              <input ref={inputRef} type="file" accept="image/*" onChange={pickFile} className="hidden" />
+              <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+                onChange={pickFile} className="hidden" />
             </div>
 
             <div>
@@ -119,6 +121,11 @@ export default function PhotoUpload() {
             </button>
           </form>
         </div>
+        ) : booking && (
+          <p className="text-sm text-gray-500 text-center">
+            {booking.status === "accepted" ? "Photos can be added once the ride starts." : "No photos to add right now."}
+          </p>
+        )}
 
         <Link href="/dashboard" className="block text-center text-sm text-gray-500 hover:text-blue-600">
           ← Back to dashboard
