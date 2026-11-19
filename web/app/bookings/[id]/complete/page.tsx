@@ -10,13 +10,13 @@ export default function CompleteBooking() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setMsg(""); setLoading(true);
     try {
       await api.bookings.complete(Number(id), code);
-      setMsg("  Booking completed!");
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setDone(true);
     } catch (err: any) { setMsg("  " + (err.message ?? "Wrong OTP")); }
     finally { setLoading(false); }
   }
@@ -27,6 +27,18 @@ export default function CompleteBooking() {
         <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
         <h1 className="text-xl font-bold mt-4 mb-2">Complete Ride</h1>
         <p className="text-sm text-gray-500 mb-6">The renter will show you a 6-digit end OTP. Enter it to close the booking.</p>
+        {done ? (
+          <div className="space-y-3">
+            <p className="text-sm text-green-700">Booking completed!</p>
+            <Link href={`/bookings/${id}/photos`}
+              className="block text-center bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700">
+              📷 Add post-ride photos (optional)
+            </Link>
+            <Link href="/dashboard" className="block text-center text-sm text-gray-500 hover:text-blue-600">
+              Skip, back to dashboard
+            </Link>
+          </div>
+        ) : (
         <form onSubmit={submit} className="space-y-4">
           <input
             type="text" inputMode="numeric" maxLength={6} value={code}
@@ -40,6 +52,7 @@ export default function CompleteBooking() {
             {loading ? "Verifying…" : "Mark Complete"}
           </button>
         </form>
+        )}
       </div>
     </main>
   );
