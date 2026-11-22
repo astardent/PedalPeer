@@ -122,7 +122,11 @@ def signup(user: UserSignup):
         query = "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id, username, email;"
         new_user = conn.execute(query, (user.username, email, hash_password(user.password))).fetchone()
 
-        return {"status": "success", "user": new_user}
+        return {
+            "status": "success",
+            "user":   new_user,
+            "token":  make_token(new_user["id"], new_user["email"]),
+        }
 
 @app.post("/login")
 def login(body: UserLogin):
