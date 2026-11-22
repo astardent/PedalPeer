@@ -30,7 +30,7 @@ export default function SignupPage() {
         {error && <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
-            { label: "Username", key: "username", type: "text",     placeholder: "e.g. debasish",        min: 3 },
+            { label: "Username", key: "username", type: "text",     placeholder: "e.g. ayan",        min: 3 },
             { label: "Email",    key: "email",    type: "email",    placeholder: "rollno@iitb.ac.in",
               pattern: "[^@\\s]+@[iI][iI][tT][bB]\\.[aA][cC]\\.[iI][nN]", title: "Use your @iitb.ac.in email" },
             { label: "Password", key: "password", type: "password", placeholder: "min 6 characters",     min: 6 },

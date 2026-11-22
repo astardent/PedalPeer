@@ -4,6 +4,12 @@ function token() {
   return typeof window !== "undefined" ? localStorage.getItem("token") : null;
 }
 
+// FastAPI validation errors (422) send `detail` as an array of objects
+function errorMessage(err: any, status: number): string {
+  if (Array.isArray(err.detail)) return err.detail.map((d: any) => d.msg).join(", ");
+  return err.detail ?? `HTTP ${status}`;
+}
+
 async function req(path: string, options: RequestInit = {}) {
   const t = token();
   const res = await fetch(`${BASE}${path}`, {
@@ -16,7 +22,7 @@ async function req(path: string, options: RequestInit = {}) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `HTTP ${res.status}`);
+    throw new Error(errorMessage(err, res.status));
   }
   return res.json();
 }
@@ -33,7 +39,7 @@ async function upload(path: string, file: File, notes?: string) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `HTTP ${res.status}`);
+    throw new Error(errorMessage(err, res.status));
   }
   return res.json();
 }

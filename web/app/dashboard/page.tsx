@@ -205,7 +205,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <select id="cycle-sort" value={sortBy} onChange={e => setSortBy(e.target.value as any)}
                 className="text-sm border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white">
-                <option value="newest">Newest</option>
+           *     <option value="newest">Newest</option>
                 <option value="price_asc">Price: low to high</option>
                 <option value="price_desc">Price: high to low</option>
                 <option value="rating">Rating: high to low</option>

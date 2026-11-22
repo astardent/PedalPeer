@@ -29,6 +29,128 @@ PedalPeer is a peer-to-peer campus bicycle-sharing platform for IIT Bombay. Stud
 
 ---
 
+## Code Organization
+
+The project has three parts: a **Next.js frontend** (`web/`), a **FastAPI backend** (`api/`) and **PostgreSQL schema files** (`db/`). The browser only talks to the backend over JSON; only the backend reads and writes the database and the photo folder.
+
+```
+Browser (Next.js pages)  ──►  web/lib/api.ts  ──HTTP + JWT──►  FastAPI (api/main.py)  ──SQL──►  PostgreSQL
+                                                                      │
+                                                                      └──►  api/uploads/  (photo files)
+```
+
+```
+PedalPeer/
+├── api/                     FastAPI backend
+│   ├── main.py              all REST endpoints and booking rules
+│   ├── auth.py              password hashing, JWT tokens, current-user check
+│   ├── otp.py               OTP generation, hashing and verification
+│   ├── database.py          PostgreSQL connection pool
+│   ├── analysis.py          /analysis queries and matplotlib charts
+│   ├── requirements.txt     Python dependencies
+│   └── uploads/             saved condition photos (created at runtime, not in git)
+├── db/migrations/           SQL schema, applied in number order
+├── web/                     Next.js frontend
+│   ├── app/                 one folder per page (App Router)
+│   ├── components/          small shared UI pieces
+│   └── lib/                 API client and login state
+├── meeting-minutes/         team meeting notes
+└── README.md
+```
+
+### Backend: `api/`
+
+| File | Role |
+|---|---|
+| `main.py` | The FastAPI app. Sets up CORS, mounts `/uploads` for photos, and defines the Pydantic request models (`UserSignup`, `NewCycle`, `NewBooking`, `OTPSubmit`, `NewReview`). Contains every endpoint: signup/login, cycles, bookings and their status changes (accept, start, complete, cancel), photos and reviews. Enforces the business rules: `@iitb.ac.in` emails, no booking your own cycle, overlap and duplicate checks, who may act at each booking status, the 30-minute post-ride photo window, fare calculation, and when emails are shared. |
+| `auth.py` | Security helpers. `hash_password` / `verify_password` use bcrypt; `make_token` creates a 24-hour HS256 JWT; `current_user` is a FastAPI dependency that reads the `Authorization: Bearer` header and rejects missing or expired tokens. |
+| `otp.py` | `new_code` makes a 6-digit code with `secrets`; `hash_code` stores it as SHA-256 of booking id, code and `OTP_PEPPER`; `verify_code` compares with `compare_digest`. Only hashes are stored in the database. |
+| `database.py` | Loads `DATABASE_URL` from `.env` and creates one shared `psycopg` connection pool. Rows come back as dictionaries. |
+| `analysis.py` | A FastAPI router mounted by `main.py`. Holds six SQL queries (each `LIMIT 10`) and `bar_chart()`, which draws a horizontal bar chart with matplotlib and returns it as a base64 PNG. Serves `GET /analysis`. |
+| `requirements.txt` | Pinned Python packages: FastAPI, uvicorn, psycopg, bcrypt, PyJWT, python-multipart, matplotlib and their dependencies. |
+| `.env` | Local settings (not in git): `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`, `OTP_PEPPER`. |
+| `package.json`, `package-lock.json` | Left over from an early Node/Express plan. Not used by the FastAPI backend. |
+
+Main endpoints in `main.py`:
+
+| Area | Endpoints |
+|---|---|
+| Health | `GET /health`, `GET /test-db` |
+| Users | `POST /signup`, `POST /login`, `GET /me` |
+| Cycles | `GET /cycles`, `GET /cycles/mine`, `GET /cycles/{id}`, `GET /cycles/{id}/reviews`, `POST /cycles`, `PATCH /cycles/{id}/toggle`, `DELETE /cycles/{id}` |
+| Bookings | `POST /bookings`, `GET /bookings/mine`, `GET /bookings/incoming`, `GET /bookings/active-on-my-cycles`, `GET /bookings/history-on-my-cycles`, `GET /bookings/{id}` |
+| Handover | `POST /bookings/{id}/accept`, `/start-otp`, `/start`, `/end-otp`, `/complete`, `/cancel` |
+| Photos | `POST /bookings/{id}/photos/{pre\|post}`, `GET /bookings/{id}/photos` |
+| Reviews | `POST /bookings/{id}/review` |
+| Analysis | `GET /analysis` (in `analysis.py`) |
+
+### Database: `db/migrations/`
+
+Run in number order. Each later file changes the schema with `ALTER TABLE`; earlier files are not edited.
+
+| File | Role |
+|---|---|
+| `001_init.sql` | `users` table: username, email (both unique), bcrypt password hash. |
+| `002_cycles.sql` | `cycles` table: owner, title, description, price per hour, hostel, lat/lng, availability. |
+| `003_bookings.sql` | `booking_status` enum and `bookings` table: cycle, renter, booked times, status, hashed start/end OTPs, actual start/end times. |
+| `004_condition_ledger.sql` | `condition_ledger` table: pre-ride and post-ride photo records for a booking. |
+| `005_reviews.sql` | `reviews` table: 1–5 stars and a comment; one review per side (`cycle` or `renter`) per booking. |
+| `006_booking_fare.sql` | Adds `hostel`, `price_per_hour` and `total_fare` to `bookings`, and fills them for existing rows. |
+
+### Frontend: `web/`
+
+**Shared code**
+
+| File | Role |
+|---|---|
+| `lib/api.ts` | The only place that calls the backend. `req()` sends JSON with the saved JWT; `upload()` sends photos as form data; `errorMessage()` turns API errors into readable text. Exposes `api.cycles.*`, `api.bookings.*`, `api.analysis()` and the auth calls. |
+| `lib/auth.tsx` | React context for login state. Keeps the JWT in `localStorage`, loads the current user from `/me` on start, and provides `login()` and `logout()` to every page through `useAuth()`. |
+| `components/Rating.tsx` | Shows "★ 4.3 (12)" or "No ratings yet". |
+| `components/Contact.tsx` | Shows the other person's email as a mail link, only when the API returns one. |
+| `components/Footer.tsx` | A simple footer component. Not currently used by any page. |
+| `app/layout.tsx` | Root layout: font, global CSS, and the `AuthProvider` wrapped around every page. |
+| `app/globals.css` | Tailwind import and base styles (light theme, readable input colors). |
+
+**Pages** (each folder under `app/` is a URL)
+
+| File | URL | Role |
+|---|---|---|
+| `app/page.tsx` | `/` | Landing page with Log in and Sign up buttons. |
+| `app/signup/page.tsx` | `/signup` | Sign-up form; only `@iitb.ac.in` emails. |
+| `app/login/page.tsx` | `/login` | Login form; saves the token and opens the dashboard. |
+| `app/dashboard/page.tsx` | `/dashboard` | Home after login: incoming requests, active and completed rides on your cycles, your rentals, fares, contact emails, and available cycles sortable by price or rating. |
+| `app/cycles/page.tsx` | `/cycles` | Browse available cycles, filter by hostel, see ratings. |
+| `app/cycles/[id]/page.tsx` | `/cycles/{id}` | One cycle: details, rating, past reviews and the booking form. |
+| `app/cycles/new/page.tsx` | `/cycles/new` | Form to list a new cycle. |
+| `app/my-cycles/page.tsx` | `/my-cycles` | Owner's cycles: mark available or unavailable, delete. |
+| `app/bookings/[id]/page.tsx` | `/bookings/{id}` | Renter's booking page: enter the start OTP, show the end OTP, see the owner's contact and the final fare. |
+| `app/bookings/[id]/accept/page.tsx` | `/bookings/{id}/accept` | Owner reviews a request (with the renter's rating), accepts or declines, and sees the start OTP. |
+| `app/bookings/[id]/complete/page.tsx` | `/bookings/{id}/complete` | Owner enters the end OTP and sees the calculated fare. |
+| `app/bookings/[id]/photos/page.tsx` | `/bookings/{id}/photos` | Upload and view condition photos; picks pre or post from your role and the booking status. |
+| `app/bookings/[id]/review/page.tsx` | `/bookings/{id}/review` | Rate the cycle (renter) or the renter (owner) after the ride. |
+| `app/analysis/page.tsx` | `/analysis` | Charts and tables from `GET /analysis`. Not linked from the app. |
+| `app/cycles/[id]/loading.tsx`, `app/bookings/[id]/loading.tsx` | — | Loading screens. Next.js 16 needs these around pages that read the URL id. |
+
+**Configuration**
+
+| File | Role |
+|---|---|
+| `next.config.ts` | Next.js settings: cache components, Tailwind via Turbopack, allowed dev origins for testing on phones. |
+| `package.json`, `package-lock.json` | Frontend dependencies and scripts (`npm run dev`, `npm run build`). |
+| `tsconfig.json` | TypeScript settings, including the `@/` import alias. |
+| `eslint.config.mjs` | Lint rules. |
+| `AGENTS.md` | Generated by `next dev`; notes for AI coding tools about this Next.js version. |
+| `.env.local` | Optional `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`). Not in git. |
+
+### Other
+
+| Path | Role |
+|---|---|
+| `meeting-minutes/meeting00-kickoff.md` | Kickoff meeting: goals, roles and weekly plan. |
+| `.gitignore` | Keeps `.env`, `.venv`, `node_modules`, `api/uploads` and build output out of git. |
+
+---
+
 ## Prerequisites
 
 Make sure you have the following installed on your machine:
@@ -97,7 +219,7 @@ Make sure you have the following installed on your machine:
    ```
 5. Start the backend API server:
    ```bash
-   uvicorn main:app --reload --port 8000
+   uvicorn main:app --reload --port 8000 --host 0.0.0.0
    ```
    > The API will be available at: **http://localhost:8000**
    > Interactive API docs (Swagger): **http://localhost:8000/docs**
@@ -118,7 +240,7 @@ Uploaded photos are saved in `api/uploads/` and served at `http://localhost:8000
    ```
 3. Start the Next.js development server:
    ```bash
-   npm run dev
+   npm next dev --hotname 0.0.0.0
    ```
    > The web app will be available at: **http://localhost:3000**
 
