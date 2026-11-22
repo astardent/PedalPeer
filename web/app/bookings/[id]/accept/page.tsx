@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Rating } from "@/components/Rating";
+import { Contact } from "@/components/Contact";
 
 export default function AcceptBooking() {
   const { id } = useParams();
@@ -25,6 +26,7 @@ export default function AcceptBooking() {
     try {
       const data = await api.bookings.accept(Number(id));
       setOtp(data.start_otp);
+      api.bookings.get(Number(id)).then(setBooking).catch(() => {});
     } catch (err: any) { alert(err.message); }
     finally { setLoading(false); }
   }
@@ -45,7 +47,8 @@ export default function AcceptBooking() {
         {otp
           ? <>
             <h1 className="text-xl font-bold mb-2">Accepted  </h1>
-            <p className="text-gray-500 text-sm mb-6">Share this start OTP with the renter in person.</p>
+            <p className="text-gray-500 text-sm">Share this start OTP with the renter in person.</p>
+            <div className="mb-6"><Contact label="Renter" name={booking.renter_name} email={booking.renter_email} /></div>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center mb-4">
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{otp}</p>
               <p className="text-xs text-blue-600 mt-2">Start OTP — shown here until the ride starts</p>

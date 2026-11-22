@@ -33,6 +33,10 @@ MAX_PHOTO_BYTES = 8 * 1024 * 1024
 STAGE_STATUS = {"pre": "active", "post": "completed"}
 ALLOWED_EMAIL_DOMAIN = "iitb.ac.in"
 
+# emails are shared only once the owner has accepted the booking
+OWNER_EMAIL_SQL = """CASE WHEN b.status IN ('accepted', 'active', 'completed') THEN ou.email END AS owner_email"""
+RENTER_EMAIL_SQL = """CASE WHEN b.status IN ('accepted', 'active', 'completed') THEN u.email END AS renter_email"""
+
 CYCLE_RATING_SQL = """
     (SELECT ROUND(AVG(r.stars), 1)::float FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
       WHERE r.target = 'cycle' AND rb.cycle_id = c.id) AS rating,
@@ -250,9 +254,11 @@ def request_booking(body: NewBooking, user=Depends(current_user)):
 def my_bookings(user=Depends(current_user)):
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, c.hostel,
+            f"""SELECT b.*, c.title as cycle_title, c.hostel, ou.username AS owner_name,
+                      {OWNER_EMAIL_SQL},
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'cycle') AS reviewed
-               FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s
+               FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users ou ON ou.id = c.owner_id
+               WHERE b.renter_id = %s
                ORDER BY COALESCE(b.actual_end, b.actual_start, b.start_time) DESC""",
             (user["id"],)).fetchall()
 
@@ -261,7 +267,7 @@ def incoming_bookings(user=Depends(current_user)):
     """Bookings on my cycles waiting for me: new requests and accepted ones not yet started."""
     with pool.connection() as conn:
         return conn.execute(
-            f"""SELECT b.*, c.title as cycle_title, u.username as renter_name, {RENTER_RATING_SQL}
+            f"""SELECT b.*, c.title as cycle_title, u.username as renter_name, {RENTER_EMAIL_SQL}, {RENTER_RATING_SQL}
                 FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
                 WHERE c.owner_id = %s AND b.status IN ('requested', 'accepted') ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
@@ -271,14 +277,16 @@ def active_on_my_cycles(user=Depends(current_user)):
     """Rides currently happening on my cycles, so I can complete them."""
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, u.username as renter_name FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id WHERE c.owner_id = %s AND b.status = 'active' ORDER BY b.created_at DESC""",
+            f"""SELECT b.*, c.title as cycle_title, u.username as renter_name, {RENTER_EMAIL_SQL}
+                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
+                WHERE c.owner_id = %s AND b.status = 'active' ORDER BY b.created_at DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/history-on-my-cycles")
 def history_on_my_cycles(user=Depends(current_user)):
     with pool.connection() as conn:
         return conn.execute(
-            """SELECT b.*, c.title as cycle_title, u.username as renter_name,
+            f"""SELECT b.*, c.title as cycle_title, u.username as renter_name, {RENTER_EMAIL_SQL},
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'renter') AS reviewed
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
                WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC NULLS LAST""",
@@ -293,9 +301,11 @@ def get_booking(booking_id: int, user=Depends(current_user)):
                       b.actual_start, b.actual_end, b.price_per_hour, b.total_fare,
                       (b.actual_end > NOW() - INTERVAL '30 minutes') AS post_window_open,
                       c.title AS cycle_title, COALESCE(b.hostel, c.hostel) AS hostel, c.owner_id, u.username AS renter_name,
+                      ou.username AS owner_name, {OWNER_EMAIL_SQL}, {RENTER_EMAIL_SQL},
                       {RENTER_RATING_SQL},
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.reviewer_id = %s) AS reviewed_by_me
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
+               JOIN users ou ON ou.id = c.owner_id
                WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
             (user["id"], booking_id, user["id"], user["id"])).fetchone()
         if not row:

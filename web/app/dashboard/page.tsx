@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Rating } from "@/components/Rating";
+import { Contact } from "@/components/Contact";
 
 const STATUS_STYLE: Record<string, string> = {
   requested: "bg-yellow-100 text-yellow-700",
@@ -98,6 +99,7 @@ export default function Dashboard() {
                     <p className="font-medium">{b.cycle_title}</p>
                     <p className="text-sm text-gray-500">Requested by {b.renter_name}{" "}
                       <Rating value={b.renter_rating} count={b.renter_rating_count} /></p>
+                    <Contact label="Renter" email={b.renter_email} />
                     <Times b={b} />
                   </div>
                   <Link href={`/bookings/${b.id}/accept`}
@@ -120,6 +122,7 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium">{b.cycle_title}</p>
                     <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
+                    <Contact label="Renter" email={b.renter_email} />
                     <Times b={b} />
                   </div>
                   <Link href={`/bookings/${b.id}/complete`}
@@ -140,6 +143,7 @@ export default function Dashboard() {
                 <div key={b.id} className="bg-white rounded-xl border p-4">
                   <p className="font-medium">{b.cycle_title}</p>
                   <p className="text-sm text-gray-500">Rented by {b.renter_name}</p>
+                  <Contact label="Renter" email={b.renter_email} />
                   <Times b={b} />
                   <Link href={`/bookings/${b.id}/photos`} className="text-xs text-blue-600 hover:underline mt-1 inline-block">Photos</Link>
                   {!b.reviewed && (
@@ -162,6 +166,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium">{b.cycle_title}</p>
                       <p className="text-sm text-gray-500">{b.hostel}</p>
+                      <Contact label="Owner" name={b.owner_name} email={b.owner_email} />
                       <Times b={b} />
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_STYLE[b.status]}`}>
                         {b.status}

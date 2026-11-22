@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Contact } from "@/components/Contact";
 
 const STATUS_MSG: Record<string, string> = {
   requested: "Waiting for the owner to accept your request…",
@@ -48,7 +49,8 @@ export default function ManageBooking() {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow p-8">
         <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
         <h1 className="text-xl font-bold mt-4 mb-1">{booking.cycle_title}</h1>
-        <p className="text-gray-500 text-sm mb-4">{booking.hostel}</p>
+        <p className="text-gray-500 text-sm">{booking.hostel}</p>
+        <div className="mb-4"><Contact label="Owner" name={booking.owner_name} email={booking.owner_email} /></div>
         <span className={`text-xs px-2 py-1 rounded-full font-medium ${isActive ? "bg-green-100 text-green-700" :
           isAccepted ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
           }`}>{booking.status}</span>
