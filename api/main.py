@@ -29,6 +29,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 STAGE_STATUS = {"pre": "active", "post": "completed"}
+ALLOWED_EMAIL_DOMAIN = "iitb.ac.in"
 
 CYCLE_RATING_SQL = """
     (SELECT ROUND(AVG(r.stars), 1)::float FROM reviews r JOIN bookings rb ON rb.id = r.booking_id
@@ -97,9 +98,12 @@ class NewReview(BaseModel):
 
 @app.post("/signup", status_code=201)
 def signup(user: UserSignup):
+    email = user.email.strip().lower()
+    if not email.endswith("@" + ALLOWED_EMAIL_DOMAIN):
+        raise HTTPException(400, f"Use your @{ALLOWED_EMAIL_DOMAIN} email")
     with pool.connection() as conn:
         #check if email exist
-        existing = conn.execute("SELECT id FROM users WHERE email = %s;", (user.email,)).fetchone()
+        existing = conn.execute("SELECT id FROM users WHERE email = %s;", (email,)).fetchone()
         if existing:
             raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -108,9 +112,9 @@ def signup(user: UserSignup):
         if existing:
             raise HTTPException(status_code=400, detail="Username already taken")
 
-        # Insert new user
+        # Insert new user with password hash
         query = "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id, username, email;"
-        new_user = conn.execute(query, (user.username, user.email, hash_password(user.password))).fetchone()
+        new_user = conn.execute(query, (user.username, email, hash_password(user.password))).fetchone()
 
         return {"status": "success", "user": new_user}
 
@@ -118,8 +122,8 @@ def signup(user: UserSignup):
 def login(body: UserLogin):
     with pool.connection() as conn:
         query="SELECT id, username, email, password_hash FROM users WHERE email = %s"
-        row = conn.execute(query,(body.email,)).fetchone()
-
+        row = conn.execute(query,(body.email.strip().lower(),)).fetchone()
+        # if row does not exist or password mismatch
         if not row or not verify_password(body.password, row["password_hash"]):
             raise HTTPException(401, "invalid credentials")
         return{
@@ -198,6 +202,17 @@ def delete_cycle(cycle_id: int, user=Depends(current_user)):
             raise HTTPException(404, "not found or not your cycle")
         return {"ok": True}
 
+@app.patch("/cycles/{cycle_id}/toggle")
+def toggle_cycle(cycle_id: int, user=Depends(current_user)):
+    with pool.connection() as conn:
+        row = conn.execute(
+            """UPDATE cycles SET is_available = NOT is_available
+               WHERE id = %s AND owner_id = %s RETURNING id, is_available""",
+            (cycle_id, user["id"])).fetchone()
+        if not row:
+            raise HTTPException(404, "not found or not your cycle")
+        return row
+
 # bookings
 
 @app.post("/bookings", status_code=201)
@@ -233,7 +248,8 @@ def my_bookings(user=Depends(current_user)):
         return conn.execute(
             """SELECT b.*, c.title as cycle_title, c.hostel,
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'cycle') AS reviewed
-               FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s ORDER BY b.created_at DESC""",
+               FROM bookings b JOIN cycles c ON b.cycle_id = c.id WHERE b.renter_id = %s
+               ORDER BY COALESCE(b.actual_end, b.actual_start, b.start_time) DESC""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/incoming")
@@ -261,7 +277,7 @@ def history_on_my_cycles(user=Depends(current_user)):
             """SELECT b.*, c.title as cycle_title, u.username as renter_name,
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.target = 'renter') AS reviewed
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
-               WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC""",
+               WHERE c.owner_id = %s AND b.status = 'completed' ORDER BY b.actual_end DESC NULLS LAST""",
             (user["id"],)).fetchall()
 
 @app.get("/bookings/{booking_id}")
@@ -271,6 +287,7 @@ def get_booking(booking_id: int, user=Depends(current_user)):
         row = conn.execute(
             f"""SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
                       b.actual_start, b.actual_end,
+                      (b.actual_end > NOW() - INTERVAL '30 minutes') AS post_window_open,
                       c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name,
                       {RENTER_RATING_SQL},
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.reviewer_id = %s) AS reviewed_by_me
@@ -377,7 +394,9 @@ def cancel_booking(booking_id: int, user=Depends(current_user)):
 
 def get_booking_member(conn, booking_id: int, user_id: int):
     """Only the renter or the cycle owner may touch a booking's photos."""
-    row = conn.execute("""SELECT b.renter_id, b.status, c.owner_id FROM bookings b JOIN cycles c ON b.cycle_id = c.id
+    row = conn.execute("""SELECT b.renter_id, b.status, c.owner_id,
+                                 (b.actual_end > NOW() - INTERVAL '30 minutes') AS post_window_open
+                          FROM bookings b JOIN cycles c ON b.cycle_id = c.id
                           WHERE b.id = %s AND (b.renter_id = %s OR c.owner_id = %s)""",
         (booking_id, user_id, user_id)).fetchone()
     if not row:
@@ -409,6 +428,8 @@ def upload_photo(
             raise HTTPException(409, "pre photos can be added once the ride has started"
                                      if stage == "pre" else
                                      "post photos can be added once the ride is completed")
+        if stage == "post" and not booking["post_window_open"]:
+            raise HTTPException(409, "post-ride photos can only be added within 30 minutes of the ride ending")
 
         dest = UPLOAD_DIR / f"{booking_id}_{stage}_{uuid.uuid4().hex}{ext}"
         size, too_big = 0, False

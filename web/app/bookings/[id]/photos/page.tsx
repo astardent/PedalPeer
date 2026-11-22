@@ -26,7 +26,7 @@ export default function PhotoUpload() {
 
   const stage: "pre" | "post" | null =
     booking && user && booking.renter_id === user.id && booking.status === "active"    ? "pre"  :
-    booking && user && booking.owner_id  === user.id && booking.status === "completed" ? "post" : null;
+    booking && user && booking.owner_id  === user.id && booking.status === "completed" && booking.post_window_open ? "post" : null;
 
   function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -121,7 +121,10 @@ export default function PhotoUpload() {
         </div>
         ) : booking && (
           <p className="text-sm text-gray-500 text-center">
-            {booking.status === "accepted" ? "Photos can be added once the ride starts." : "No photos to add right now."}
+            {booking.status === "accepted" ? "Photos can be added once the ride starts."
+              : booking.status === "completed" && booking.owner_id === user?.id && !booking.post_window_open
+                ? "The 30-minute window for post-ride photos has closed."
+                : "No photos to add right now."}
           </p>
         )}
 

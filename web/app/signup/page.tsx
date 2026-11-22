@@ -31,12 +31,14 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
             { label: "Username", key: "username", type: "text",     placeholder: "e.g. debasish",        min: 3 },
-            { label: "Email",    key: "email",    type: "email",    placeholder: "rollno@iitb.ac.in" },
+            { label: "Email",    key: "email",    type: "email",    placeholder: "rollno@iitb.ac.in",
+              pattern: "[^@\\s]+@[iI][iI][tT][bB]\\.[aA][cC]\\.[iI][nN]", title: "Use your @iitb.ac.in email" },
             { label: "Password", key: "password", type: "password", placeholder: "min 6 characters",     min: 6 },
           ].map(f => (
             <div key={f.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
               <input type={f.type} required minLength={f.min} placeholder={f.placeholder}
+                pattern={f.pattern} title={f.title}
                 value={(form as any)[f.key]}
                 onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />

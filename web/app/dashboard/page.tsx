@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [active, setActive]     = useState<any[]>([]);
   const [history, setHistory]   = useState<any[]>([]);
   const [ready, setReady]       = useState(false);
+  const [sortBy, setSortBy]     = useState<"newest" | "price_asc" | "price_desc" | "rating">("newest");
 
   useEffect(() => {
     if (authLoading) return;
@@ -54,6 +55,13 @@ export default function Dashboard() {
   }, [user, authLoading]);
 
   if (!ready) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+
+  const sortedCycles = [...cycles].sort((a, b) => {
+    if (sortBy === "price_asc")  return a.price_per_hour - b.price_per_hour;
+    if (sortBy === "price_desc") return b.price_per_hour - a.price_per_hour;
+    if (sortBy === "rating")     return (b.rating ?? -1) - (a.rating ?? -1) || b.rating_count - a.rating_count;
+    return 0;
+  });
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -188,12 +196,21 @@ export default function Dashboard() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-gray-900 text-lg">Available Cycles</h2>
-            <Link href="/cycles" className="text-sm text-blue-600 hover:underline">See all →</Link>
+            <div className="flex items-center gap-3">
+              <select id="cycle-sort" value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+                className="text-sm border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white">
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price: low to high</option>
+                <option value="price_desc">Price: high to low</option>
+                <option value="rating">Rating: high to low</option>
+              </select>
+              <Link href="/cycles" className="text-sm text-blue-600 hover:underline">See all →</Link>
+            </div>
           </div>
           {cycles.length === 0
             ? <p className="text-gray-400 text-sm">No cycles listed yet.</p>
             : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {cycles.slice(0, 4).map((c: any) => (
+                {sortedCycles.slice(0, 4).map((c: any) => (
                   <Link key={c.id} href={`/cycles/${c.id}`}
                     className="bg-white rounded-xl border p-4 hover:shadow-md transition block">
                     <div className="flex justify-between">

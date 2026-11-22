@@ -18,8 +18,10 @@ export default function MyCycles() {
   }, [user, authLoading]);
 
   async function toggle(id: number) {
-    const updated = await api.cycles.toggle(id);
-    setCycles(cs => cs.map(c => c.id === id ? { ...c, is_available: updated.is_available } : c));
+    try {
+      const updated = await api.cycles.toggle(id);
+      setCycles(cs => cs.map(c => c.id === id ? { ...c, is_available: updated.is_available } : c));
+    } catch (err: any) { alert(err.message); }
   }
 
   async function remove(id: number) {

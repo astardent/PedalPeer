@@ -29,7 +29,7 @@ def make_token(user_id:int, email:str)->str:
         "email":email,
         "exp":datetime.now(timezone.utc)+timedelta(minutes=TTL),
     }
-    return jwt.encode(payload,SECRET,algorithm=ALGO)
+    return jwt.encode(payload,SECRET,algorithm=ALGO) #ALGO is HS256
 
 def current_user(creds:HTTPAuthorizationCredentials | None = Depends(bearer)):
     if creds is None:
