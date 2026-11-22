@@ -42,6 +42,7 @@ export const api = {
   signup: (d: object) => req("/signup", { method: "POST", body: JSON.stringify(d) }),
   login:  (d: object) => req("/login",  { method: "POST", body: JSON.stringify(d) }),
   me: () => req("/me"),
+  analysis: () => req("/analysis"),
 
   cycles: {
     list:   (hostel?: string) => req(`/cycles${hostel ? `?hostel=${hostel}` : ""}`),

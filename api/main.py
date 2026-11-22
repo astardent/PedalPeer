@@ -10,6 +10,7 @@ from auth import current_user,verify_password,make_token,hash_password
 from typing import Optional
 from datetime import datetime
 from otp import hash_code,new_code,verify_code
+import analysis
 load_dotenv()
 
 app = FastAPI(title="PedalPeer Local API")
@@ -25,6 +26,7 @@ app.add_middleware(
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.include_router(analysis.router)
 
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
