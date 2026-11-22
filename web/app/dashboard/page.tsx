@@ -10,8 +10,8 @@ const STATUS_STYLE: Record<string, string> = {
   requested: "bg-yellow-100 text-yellow-700",
   accepted:  "bg-blue-100 text-blue-700",
   active:    "bg-green-100 text-green-700",
-  completed: "bg-gray-100 text-gray-500",
-  cancelled: "bg-red-100 text-red-400",
+  completed: "bg-gray-100 text-gray-700",
+  cancelled: "bg-red-100 text-red-700",
 };
 
 function fmt(s?: string | null) {
@@ -25,6 +25,7 @@ function Times({ b }: { b: any }) {
       {b.actual_start && (
         <p>Actual: {fmt(b.actual_start)} → {b.actual_end ? fmt(b.actual_end) : "riding now"}</p>
       )}
+      {b.total_fare != null && <p className="font-medium text-gray-700">Fare: ₹{Number(b.total_fare).toFixed(2)}</p>}
     </div>
   );
 }
@@ -54,7 +55,7 @@ export default function Dashboard() {
     }).finally(() => setReady(true));
   }, [user, authLoading]);
 
-  if (!ready) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!ready) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   const sortedCycles = [...cycles].sort((a, b) => {
     if (sortBy === "price_asc")  return a.price_per_hour - b.price_per_hour;
@@ -78,7 +79,7 @@ export default function Dashboard() {
             My cycles
           </Link>
           <button onClick={() => { logout(); router.push("/"); }}
-            className="text-sm text-gray-400 hover:text-red-500">
+            className="text-sm text-gray-500 hover:text-red-500">
             Logout
           </button>
         </div>
@@ -154,7 +155,7 @@ export default function Dashboard() {
         <section>
           <h2 className="text-gray-900 font-semibold text-lg mb-3">My Rentals</h2>
           {bookings.length === 0
-            ? <p className="text-gray-400 text-sm">No bookings yet. <Link href="/cycles" className="text-blue-500 underline">Browse cycles →</Link></p>
+            ? <p className="text-gray-500 text-sm">No bookings yet. <Link href="/cycles" className="text-blue-500 underline">Browse cycles →</Link></p>
             : <div className="space-y-3">
                 {bookings.map((b: any) => (
                   <div key={b.id} className="bg-white rounded-xl border p-4 flex items-center justify-between">
@@ -208,7 +209,7 @@ export default function Dashboard() {
             </div>
           </div>
           {cycles.length === 0
-            ? <p className="text-gray-400 text-sm">No cycles listed yet.</p>
+            ? <p className="text-gray-500 text-sm">No cycles listed yet.</p>
             : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {sortedCycles.slice(0, 4).map((c: any) => (
                   <Link key={c.id} href={`/cycles/${c.id}`}
@@ -222,7 +223,7 @@ export default function Dashboard() {
                       </div>
                       <span className="text-blue-600 font-semibold text-sm">₹{c.price_per_hour}/hr</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-3">by {c.owner_name}</p>
+                    <p className="text-xs text-gray-500 mt-3">by {c.owner_name}</p>
                   </Link>
                 ))}
               </div>

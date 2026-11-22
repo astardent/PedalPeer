@@ -28,7 +28,7 @@ export default function NewCyclePage() {
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
-        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">|</span>
         <span className="text-gray-600 text-sm">List a Cycle</span>
       </nav>
       <div className="max-w-lg mx-auto px-4 py-10">

@@ -20,7 +20,7 @@ export default function ReviewBooking() {
     api.bookings.get(Number(id)).then(setBooking).catch(() => router.push("/dashboard"));
   }, [id]);
 
-  if (!booking || !user) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!booking || !user) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   const isRenter = booking.renter_id === user.id;
   const subject = isRenter ? `the cycle "${booking.cycle_title}"` : `renter ${booking.renter_name}`;
@@ -51,7 +51,7 @@ export default function ReviewBooking() {
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map(n => (
                 <button key={n} type="button" onClick={() => setStars(n)} aria-label={`${n} star${n > 1 ? "s" : ""}`}
-                  className={`text-4xl transition ${n <= stars ? "text-amber-500" : "text-gray-300 hover:text-amber-300"}`}>
+                  className={`text-4xl transition ${n <= stars ? "text-amber-500" : "text-gray-400 hover:text-amber-400"}`}>
                   ★
                 </button>
               ))}

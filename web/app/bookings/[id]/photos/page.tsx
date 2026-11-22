@@ -55,7 +55,7 @@ export default function PhotoUpload() {
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
-        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">|</span>
         <span className="text-gray-600 text-sm">Condition Photos</span>
       </nav>
 
@@ -74,7 +74,7 @@ export default function PhotoUpload() {
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.stage === "pre" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
                       {p.stage === "pre" ? "Pre-ride" : "Post-ride"}
                     </span>
-                    {p.notes && <p className="text-xs text-gray-400 mt-1">{p.notes}</p>}
+                    {p.notes && <p className="text-xs text-gray-500 mt-1">{p.notes}</p>}
                   </div>
                 </div>
               ))}
@@ -88,7 +88,7 @@ export default function PhotoUpload() {
           <h2 className="font-semibold mb-1">
             {stage === "pre" ? "Pre-ride condition photos" : "Post-ride condition photos"}
           </h2>
-          <p className="text-xs text-gray-400 mb-4">Optional. You can skip this.</p>
+          <p className="text-xs text-gray-500 mb-4">Optional. You can skip this.</p>
           <form onSubmit={upload} className="space-y-4">
 
             <div
@@ -96,7 +96,7 @@ export default function PhotoUpload() {
               className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 transition">
               {preview
                 ? <img src={preview} alt="preview" className="max-h-48 mx-auto rounded-lg object-cover" />
-                : <div className="text-gray-400">
+                : <div className="text-gray-500">
                   <p className="text-sm">Click to choose a photo</p>
                 </div>
               }

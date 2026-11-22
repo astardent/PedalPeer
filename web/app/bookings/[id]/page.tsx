@@ -37,7 +37,7 @@ export default function ManageBooking() {
     finally { setLoading(false); setCode(""); }
   }
 
-  if (!booking) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!booking) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   const isAccepted = booking.status === "accepted";
   const isActive = booking.status === "active";
@@ -50,7 +50,7 @@ export default function ManageBooking() {
         <h1 className="text-xl font-bold mt-4 mb-1">{booking.cycle_title}</h1>
         <p className="text-gray-500 text-sm mb-4">{booking.hostel}</p>
         <span className={`text-xs px-2 py-1 rounded-full font-medium ${isActive ? "bg-green-100 text-green-700" :
-          isAccepted ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+          isAccepted ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
           }`}>{booking.status}</span>
 
         {isAccepted && (
@@ -81,7 +81,7 @@ export default function ManageBooking() {
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{endOtp || "……"}</p>
-              <p className="text-xs text-blue-400 mt-2">End OTP</p>
+              <p className="text-xs text-blue-600 mt-2">End OTP</p>
             </div>
             <Link href={`/bookings/${id}/photos`}
               className="block mt-4 text-center text-sm text-blue-600 border border-blue-300 rounded-lg py-2 hover:bg-blue-50">
@@ -92,6 +92,12 @@ export default function ManageBooking() {
 
         {!needsOtp && (
           <p className="mt-6 text-sm text-gray-500">{STATUS_MSG[booking.status] ?? ""}</p>
+        )}
+        {booking.status === "completed" && booking.total_fare != null && (
+          <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold text-green-700">₹{Number(booking.total_fare).toFixed(2)}</p>
+            <p className="text-xs text-green-700 mt-1">Total fare at ₹{booking.price_per_hour}/hr</p>
+          </div>
         )}
       </div>
     </main>

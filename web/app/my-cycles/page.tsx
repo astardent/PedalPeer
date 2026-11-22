@@ -30,13 +30,13 @@ export default function MyCycles() {
     setCycles(cs => cs.filter(c => c.id !== id));
   }
 
-  if (!ready) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!ready) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
-        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">|</span>
         <span className="text-gray-600 text-sm">My Cycles</span>
         <div className="ml-auto">
           <Link href="/cycles/new" className="bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700">
@@ -63,7 +63,7 @@ export default function MyCycles() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5">{c.hostel ?? "No hostel"} : ₹{c.price_per_hour}/hr</p>
-                    {c.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
+                    {c.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{c.description}</p>}
                   </div>
                   <div className="flex gap-2 ml-4 shrink-0">
                     <button onClick={() => toggle(c.id)}

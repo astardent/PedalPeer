@@ -37,7 +37,7 @@ export default function AcceptBooking() {
     } catch (err: any) { alert(err.message); }
   }
 
-  if (!booking) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!booking) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -48,7 +48,7 @@ export default function AcceptBooking() {
             <p className="text-gray-500 text-sm mb-6">Share this start OTP with the renter in person.</p>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center mb-4">
               <p className="text-4xl font-mono font-bold tracking-widest text-blue-700">{otp}</p>
-              <p className="text-xs text-blue-400 mt-2">Start OTP — shown here until the ride starts</p>
+              <p className="text-xs text-blue-600 mt-2">Start OTP — shown here until the ride starts</p>
             </div>
             <Link href="/dashboard"
               className="block text-center bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-blue-700">

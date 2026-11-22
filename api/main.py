@@ -238,8 +238,10 @@ def request_booking(body: NewBooking, user=Depends(current_user)):
         if duplicate:
             raise HTTPException(409, "you already have a booking for this cycle at that time")
         row = conn.execute(
-            """INSERT INTO bookings (cycle_id, renter_id, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING *""",
-            (body.cycle_id, user["id"], body.start_time, body.end_time)).fetchone()
+            """INSERT INTO bookings (cycle_id, renter_id, start_time, end_time, hostel, price_per_hour)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING *""",
+            (body.cycle_id, user["id"], body.start_time, body.end_time,
+             cycle["hostel"], cycle["price_per_hour"])).fetchone()
         return row
 
 @app.get("/bookings/mine")
@@ -286,9 +288,9 @@ def get_booking(booking_id: int, user=Depends(current_user)):
     with pool.connection() as conn:
         row = conn.execute(
             f"""SELECT b.id, b.cycle_id, b.renter_id, b.start_time, b.end_time, b.status, b.created_at,
-                      b.actual_start, b.actual_end,
+                      b.actual_start, b.actual_end, b.price_per_hour, b.total_fare,
                       (b.actual_end > NOW() - INTERVAL '30 minutes') AS post_window_open,
-                      c.title AS cycle_title, c.hostel, c.owner_id, u.username AS renter_name,
+                      c.title AS cycle_title, COALESCE(b.hostel, c.hostel) AS hostel, c.owner_id, u.username AS renter_name,
                       {RENTER_RATING_SQL},
                       EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id AND r.reviewer_id = %s) AS reviewed_by_me
                FROM bookings b JOIN cycles c ON b.cycle_id = c.id JOIN users u ON b.renter_id = u.id
@@ -373,8 +375,15 @@ def complete_rental(booking_id: int, body: OTPSubmit, user=Depends(current_user)
         if not verify_code(body.code, booking["end_otp"], booking_id):
             raise HTTPException(403, "wrong OTP")
         
-        conn.execute("UPDATE bookings SET status = 'completed', actual_end = NOW() WHERE id = %s", (booking_id,))
-        return {"ok": True}
+        row = conn.execute(
+            """UPDATE bookings
+               SET status = 'completed',
+                   actual_end = NOW(),
+                   total_fare = ROUND((EXTRACT(EPOCH FROM (NOW() - actual_start)) / 3600 * price_per_hour)::numeric, 2)
+               WHERE id = %s
+               RETURNING actual_start, actual_end, price_per_hour, total_fare""",
+            (booking_id,)).fetchone()
+        return {"ok": True, **row}
 
 @app.post("/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int, user=Depends(current_user)):

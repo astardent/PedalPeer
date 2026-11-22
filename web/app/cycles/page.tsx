@@ -20,7 +20,7 @@ export default function CyclesPage() {
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
-        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">|</span>
         <span className="text-gray-600 text-sm">Browse Cycles</span>
       </nav>
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -37,9 +37,9 @@ export default function CyclesPage() {
           ))}
         </div>
         {loading
-          ? <p className="text-gray-400 text-sm">Loading…</p>
+          ? <p className="text-gray-500 text-sm">Loading…</p>
           : cycles.length === 0
-            ? <p className="text-gray-400 text-sm">No cycles available{hostel ? ` in ${hostel}` : ""}.</p>
+            ? <p className="text-gray-500 text-sm">No cycles available{hostel ? ` in ${hostel}` : ""}.</p>
             : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {cycles.map(c => (
                   <Link key={c.id} href={`/cycles/${c.id}`}
@@ -48,12 +48,12 @@ export default function CyclesPage() {
                       <div>
                         <p className="font-medium">{c.title}</p>
                         <p className="text-sm text-gray-500">{c.hostel ?? "—"}</p>
-                        {c.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
+                        {c.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{c.description}</p>}
                       </div>
                       <span className="text-blue-600 font-semibold text-sm whitespace-nowrap">₹{c.price_per_hour}/hr</span>
                     </div>
                     <div className="flex items-center justify-between mt-3">
-                      <p className="text-xs text-gray-400">by {c.owner_name}</p>
+                      <p className="text-xs text-gray-500">by {c.owner_name}</p>
                       <Rating value={c.rating} count={c.rating_count} />
                     </div>
                   </Link>

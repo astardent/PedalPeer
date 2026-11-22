@@ -4,6 +4,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
+function durationText(start: string, end: string) {
+  const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+  return mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+}
+
 export default function CompleteBooking() {
   const { id } = useParams();
   const router = useRouter();
@@ -11,11 +16,13 @@ export default function CompleteBooking() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setMsg(""); setLoading(true);
     try {
-      await api.bookings.complete(Number(id), code);
+      const data = await api.bookings.complete(Number(id), code);
+      setResult(data);
       setDone(true);
     } catch (err: any) { setMsg("  " + (err.message ?? "Wrong OTP")); }
     finally { setLoading(false); }
@@ -30,6 +37,14 @@ export default function CompleteBooking() {
         {done ? (
           <div className="space-y-3">
             <p className="text-sm text-green-700">Booking completed!</p>
+            {result?.total_fare != null && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-green-700">₹{Number(result.total_fare).toFixed(2)}</p>
+                <p className="text-xs text-green-700 mt-1">
+                  {durationText(result.actual_start, result.actual_end)} at ₹{result.price_per_hour}/hr
+                </p>
+              </div>
+            )}
             <Link href={`/bookings/${id}/photos`}
               className="block text-center bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700">
               Add post-ride photos (optional)

@@ -37,7 +37,7 @@ export default function CycleDetail() {
     finally { setLoading(false); }
   }
 
-  if (!cycle) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!cycle) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
 
   const isOwner = user?.id === cycle.owner_id;
 
@@ -45,19 +45,19 @@ export default function CycleDetail() {
     <main className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard" className="text-blue-600 font-bold text-lg">PedalPeer</Link>
-        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">|</span>
         <Link href="/cycles" className="text-gray-500 text-sm hover:text-blue-600">Browse</Link>
       </nav>
       <div className="max-w-2xl mx-auto px-4 py-10 space-y-6">
         <div className="bg-white rounded-2xl shadow p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-gray-2xl font-bold">{cycle.title}</h1>
+              <h1 className="text-2xl text-gray-900 font-bold">{cycle.title}</h1>
               <p className="text-gray-500 mt-1">{cycle.hostel ?? "No hostel set"} - by {cycle.owner_name}</p>
               <div className="mt-1"><Rating value={cycle.rating} count={cycle.rating_count} /></div>
             </div>
             <span className="text-2xl font-bold text-blue-600">
-              ₹{cycle.price_per_hour}<span className="text-sm font-normal text-gray-400">/hr</span>
+              ₹{cycle.price_per_hour}<span className="text-sm font-normal text-gray-500">/hr</span>
             </span>
           </div>
           {cycle.description && <p className="mt-4 text-gray-600 text-sm leading-relaxed">{cycle.description}</p>}
@@ -107,17 +107,17 @@ export default function CycleDetail() {
             <Rating value={cycle.rating} count={cycle.rating_count} />
           </div>
           {reviews.length === 0 ? (
-            <p className="text-sm text-gray-400">No reviews yet.</p>
+            <p className="text-sm text-gray-500">No reviews yet.</p>
           ) : (
             <ul className="divide-y">
               {reviews.map(r => (
                 <li key={r.id} className="py-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-800">{r.reviewer_name}</span>
-                    <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-amber-500 text-sm">
-                    {"★".repeat(r.stars)}<span className="text-gray-300">{"★".repeat(5 - r.stars)}</span>
+                    {"★".repeat(r.stars)}<span className="text-gray-400">{"★".repeat(5 - r.stars)}</span>
                   </p>
                   {r.comment && <p className="text-sm text-gray-600 mt-1">{r.comment}</p>}
                 </li>
